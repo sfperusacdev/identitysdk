@@ -73,6 +73,7 @@ func ValidateToken(ctx context.Context, token string) (data *tokenData, err erro
 		}
 		return nil, errs.Internal("Auth server no responde")
 	}
+	defer res.Body.Close()
 	var response identityServerResponse
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		if logger != nil {

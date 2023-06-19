@@ -31,6 +31,7 @@ func IdentityServerCheckHealth() error {
 		}
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		payload, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("identity server error: %s", string(payload))
