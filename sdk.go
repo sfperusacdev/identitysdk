@@ -184,3 +184,11 @@ func Sucursal(c context.Context, suffix ...string) string {
 	}
 	return Empresa(c, append([]string{sucursal}, suffix...)...)
 }
+func CopyContext(ctx context.Context) context.Context {
+	values, ok := JwtClaims(ctx)
+	if !ok {
+		return context.Background()
+	}
+	var newCtx = context.WithValue(context.Background(), jwt_claims_key, values)
+	return context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
+}
