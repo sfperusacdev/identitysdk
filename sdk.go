@@ -90,6 +90,7 @@ func ValidateToken(ctx context.Context, token string) (data *tokenData, err erro
 type keyType string
 
 const jwt_claims_key = keyType("jwt-claims-context-key")
+const jwt_token_key = keyType("jwt-token-context-key")
 
 func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -105,6 +106,7 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return answer.Err(c, err)
 		}
 		ctx := context.WithValue(c.Request().Context(), jwt_claims_key, *data)
+		ctx = context.WithValue(ctx, jwt_token_key, token)
 		c.SetRequest(c.Request().WithContext(ctx))
 		return next(c)
 	}
@@ -187,11 +189,21 @@ func Sucursal(c context.Context, suffix ...string) string {
 	return Empresa(c, append([]string{sucursal}, suffix...)...)
 }
 
+func Token(c context.Context) string {
+	value := c.Value(jwt_token_key)
+	token, ok := value.(string)
+	if !ok {
+		return "####token-undefined####"
+	}
+	return token
+}
+
 func CopyContext(ctx context.Context) context.Context {
 	values, ok := JwtClaims(ctx)
 	if !ok {
 		return context.Background()
 	}
 	var newCtx = context.WithValue(context.Background(), jwt_claims_key, values)
-	return context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
+	newCtx = context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
+	return context.WithValue(newCtx, jwt_token_key, Token(ctx))
 }
