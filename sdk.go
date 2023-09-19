@@ -173,6 +173,8 @@ func Empresa(c context.Context, suffix ...string) string {
 	}
 	return data.Empresa + suff
 }
+func EmpresaPrefix(c context.Context) string  { return Empresa(c, "%") }
+func SucursalPrefix(c context.Context) string { return Sucursal(c, "%") }
 
 // Si la empresa es : `e1` y la sucursal es `s1` y suffix = [c1,c2,c3]
 // el resultado es e1.s1.c1.c3
@@ -184,6 +186,7 @@ func Sucursal(c context.Context, suffix ...string) string {
 	}
 	return Empresa(c, append([]string{sucursal}, suffix...)...)
 }
+
 func CopyContext(ctx context.Context) context.Context {
 	values, ok := JwtClaims(ctx)
 	if !ok {
