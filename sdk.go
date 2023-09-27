@@ -155,6 +155,13 @@ func UsuarioReff(c context.Context) string {
 	}
 	return values.UsuarioReff
 }
+func TrabajadorAsociado(c context.Context) string {
+	values, ok := JwtClaims(c)
+	if !ok {
+		return "####trabajador-sociado-no-found####"
+	}
+	return values.TabajadorCodigo
+}
 
 // Hace split por '.' y devuelve el último segmento
 func RemovePrefix(s string) string {
