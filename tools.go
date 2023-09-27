@@ -15,8 +15,6 @@ type update struct {
 type create struct {
 	CreatedBy string
 	CreatedAt time.Time
-	UpdatedBy string
-	UpdatedAt time.Time
 }
 
 func CreateBy(ctx context.Context, i any) {
