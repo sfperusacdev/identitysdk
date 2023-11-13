@@ -19,28 +19,11 @@ var (
 	logger          *zap.Logger
 )
 
-type identityServerResponse struct {
-	Message string    `json:"message"`
-	Data    tokenData `json:"data"`
-}
-type tokenData struct {
-	Aud             []string `json:"aud"`
-	Empresa         string   `json:"empresa"`
-	Exp             int      `json:"exp"`
-	Iat             int      `json:"iat"`
-	ID              string   `json:"id"`
-	Iss             string   `json:"iss"`
-	TabajadorCodigo string   `json:"tabajador_codigo"`
-	Username        string   `json:"username"`
-	UsuarioReff     string   `json:"usuario_reff"`
-	UsuarioCodigo   string   `json:"usuario_codigo"`
-}
-
 func SetIdentityServer(address string) { identityAddress = address }
 
 func SetLogger(l *zap.Logger) { logger = l }
 
-func ValidateToken(ctx context.Context, token string) (data *tokenData, err error) {
+func ValidateToken(ctx context.Context, token string) (data *Data, err error) {
 	hostUrl, err := url.JoinPath(identityAddress, "/v1/check-token")
 	if err != nil {
 		if logger != nil {
@@ -74,7 +57,7 @@ func ValidateToken(ctx context.Context, token string) (data *tokenData, err erro
 		return nil, errs.Internal("Auth server no responde")
 	}
 	defer res.Body.Close()
-	var response identityServerResponse
+	var response IdentityServerResponse
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		if logger != nil {
 			logger.Error(err.Error())
@@ -90,6 +73,7 @@ func ValidateToken(ctx context.Context, token string) (data *tokenData, err erro
 type keyType string
 
 const jwt_claims_key = keyType("jwt-claims-context-key")
+const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
 
 func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -105,7 +89,11 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if err != nil {
 			return answer.Err(c, err)
 		}
-		ctx := context.WithValue(c.Request().Context(), jwt_claims_key, *data)
+		if data == nil {
+			return answer.Err(c, errs.Bad("[close] session invalida"))
+		}
+		ctx := context.WithValue(c.Request().Context(), jwt_claims_key, data.Jwt)
+		ctx = context.WithValue(ctx, jwt_session_key, data.Session)
 		ctx = context.WithValue(ctx, jwt_token_key, token)
 		c.SetRequest(c.Request().WithContext(ctx))
 		return next(c)
@@ -127,12 +115,26 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 	}
 }
 
-func JwtClaims(c context.Context) (tokenData, bool) {
+func JwtClaims(c context.Context) (Jwt, bool) {
 	values := c.Value(jwt_claims_key)
 	if values == nil {
-		return tokenData{}, false
+		return Jwt{}, false
 	}
-	v, ok := values.(tokenData)
+	v, ok := values.(Jwt)
+	if !ok {
+		if logger != nil {
+			logger.Error("tokendata assert error")
+		}
+	}
+	return v, ok
+}
+
+func ReadSession(c context.Context) (Session, bool) {
+	values := c.Value(jwt_session_key)
+	if values == nil {
+		return Session{}, false
+	}
+	v, ok := values.(Session)
 	if !ok {
 		if logger != nil {
 			logger.Error("tokendata assert error")
