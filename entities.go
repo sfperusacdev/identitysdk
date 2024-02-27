@@ -12,11 +12,12 @@ type Data struct {
 }
 
 type Jwt struct {
-	Empresa         string `json:"empresa"`
-	UsuarioCodigo   string `json:"usuario_codigo"`
-	Username        string `json:"username"`
-	UsuarioReff     string `json:"usuario_reff"`
-	TabajadorCodigo string `json:"tabajador_codigo"`
+	Empresa           string `json:"empresa"`
+	ReferenciaEmpresa string `json:"referencia"`
+	UsuarioCodigo     string `json:"usuario_codigo"`
+	Username          string `json:"username"`
+	UsuarioReff       string `json:"usuario_reff"`
+	TabajadorCodigo   string `json:"tabajador_codigo"`
 }
 
 type Session struct {

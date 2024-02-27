@@ -102,7 +102,8 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 const sucursal_codigo_key = keyType("sucursal_codigo_key")
 
-// Este midleware verifica que hay un query param `sucursal no vacio`
+// Este middleware verifica que el query param `sucursal` no esté vacío.
+// Si el código de sucursal está vacío, devuelve un error de tipo `errs.Bad`.
 func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		codigo := c.QueryParam("sucursal")
@@ -165,14 +166,15 @@ func TrabajadorAsociado(c context.Context) string {
 	return values.TabajadorCodigo
 }
 
-// Hace split por '.' y devuelve el último segmento
+// Esta función toma una cadena y realiza una operación de split por el carácter '.'.
+// Luego, devuelve el último segmento de la cadena resultante.
 func RemovePrefix(s string) string {
 	parts := strings.Split(strings.TrimSpace(s), ".")
 	return strings.TrimSpace(parts[len(parts)-1:][0])
 }
 
-// Para una empresa s1 con sufix = [c1,c2,c3]
-// el resultado sera s1.c1.c2.c3
+// Esta función concatena la cadena de la empresa con los sufijos proporcionados.
+// Para una empresa "s1" y una lista de sufijos ["c1", "c2", "c3"], el resultado será "s1.c1.c2.c3".
 func Empresa(c context.Context, suffix ...string) string {
 	data, ok := JwtClaims(c)
 	if !ok {
@@ -184,11 +186,21 @@ func Empresa(c context.Context, suffix ...string) string {
 	}
 	return data.Empresa + suff
 }
+
+func ReferenciaEmpresa(c context.Context) string {
+	data, ok := JwtClaims(c)
+	if !ok {
+		return "####empresa-referencia-no-found####"
+	}
+	return data.ReferenciaEmpresa
+}
+
 func EmpresaPrefix(c context.Context) string  { return Empresa(c, "%") }
 func SucursalPrefix(c context.Context) string { return Sucursal(c, "%") }
 
-// Si la empresa es : `e1` y la sucursal es `s1` y suffix = [c1,c2,c3]
-// el resultado es e1.s1.c1.c3
+// Esta función concatena la empresa, la sucursal y los sufijos proporcionados en una cadena.
+// Si la empresa es "e1", la sucursal es "s1" y los sufijos son ["c1", "c2", "c3"],
+// el resultado será "e1.s1.c1.c2.c3".
 func Sucursal(c context.Context, suffix ...string) string {
 	value := c.Value(sucursal_codigo_key)
 	sucursal, ok := value.(string)
