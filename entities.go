@@ -17,6 +17,7 @@ type Jwt struct {
 	UsuarioCodigo     string `json:"usuario_codigo"`
 	Username          string `json:"username"`
 	UsuarioReff       string `json:"usuario_reff"`
+	IntegrationURL    string `json:"integration_url"`
 	TabajadorCodigo   string `json:"tabajador_codigo"`
 }
 

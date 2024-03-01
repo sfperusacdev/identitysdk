@@ -195,6 +195,14 @@ func ReferenciaEmpresa(c context.Context) string {
 	return data.ReferenciaEmpresa
 }
 
+func IntegracionURl(c context.Context) string {
+	data, ok := JwtClaims(c)
+	if !ok {
+		return "####integracion-url-no-found####"
+	}
+	return data.IntegrationURL
+}
+
 func EmpresaPrefix(c context.Context) string  { return Empresa(c, "%") }
 func SucursalPrefix(c context.Context) string { return Sucursal(c, "%") }
 
