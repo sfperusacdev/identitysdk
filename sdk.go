@@ -75,6 +75,7 @@ type keyType string
 const jwt_claims_key = keyType("jwt-claims-context-key")
 const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
+const domain_key = keyType("domain_key")
 
 func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -95,6 +96,7 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		ctx := context.WithValue(c.Request().Context(), jwt_claims_key, data.Jwt)
 		ctx = context.WithValue(ctx, jwt_session_key, data.Session)
 		ctx = context.WithValue(ctx, jwt_token_key, token)
+		ctx = context.WithValue(ctx, domain_key, data.Jwt.Empresa)
 		c.SetRequest(c.Request().WithContext(ctx))
 		return next(c)
 	}
@@ -172,11 +174,14 @@ func RemovePrefix(s string) string {
 	parts := strings.Split(strings.TrimSpace(s), ".")
 	return strings.TrimSpace(parts[len(parts)-1:][0])
 }
+func CtxWithDomain(ctx context.Context, domain string) context.Context {
+	return context.WithValue(ctx, domain_key, domain)
+}
 
 // Esta función concatena la cadena de la empresa con los sufijos proporcionados.
 // Para una empresa "s1" y una lista de sufijos ["c1", "c2", "c3"], el resultado será "s1.c1.c2.c3".
 func Empresa(c context.Context, suffix ...string) string {
-	data, ok := JwtClaims(c)
+	domain, ok := c.Value(domain_key).(string)
 	if !ok {
 		return "####empresa-no-found####"
 	}
@@ -184,7 +189,7 @@ func Empresa(c context.Context, suffix ...string) string {
 	for _, s := range suffix {
 		suff += "." + RemovePrefix(s)
 	}
-	return data.Empresa + suff
+	return domain + suff
 }
 
 func ReferenciaEmpresa(c context.Context) string {
@@ -233,6 +238,7 @@ func CopyContext(ctx context.Context) context.Context {
 		return context.Background()
 	}
 	var newCtx = context.WithValue(context.Background(), jwt_claims_key, values)
+	newCtx = context.WithValue(newCtx, domain_key, Empresa(ctx))
 	newCtx = context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
 	return context.WithValue(newCtx, jwt_token_key, Token(ctx))
 }
