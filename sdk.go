@@ -231,6 +231,9 @@ func Token(c context.Context) string {
 	}
 	return token
 }
+func ContextWithDomain(ctx context.Context, domain string) context.Context {
+	return context.WithValue(ctx, domain_key, domain)
+}
 
 func CopyContext(ctx context.Context) context.Context {
 	values, ok := JwtClaims(ctx)
