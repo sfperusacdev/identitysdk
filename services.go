@@ -21,7 +21,7 @@ func GetServiceURL(ctx context.Context, companyCode string, resourceCode string)
 	var queryParams = url.Values{}
 	queryParams.Set("company_code", companyCode)
 	queryParams.Set("resource_code", resourceCode)
-	hostUrl, err := url.JoinPath(identityAddress, "/health")
+	hostUrl, err := url.JoinPath(identityAddress, "/api/v1/get-service-location")
 
 	if err != nil {
 		slog.Error("QueryServiceURL: error JoinPath", "error", err,
