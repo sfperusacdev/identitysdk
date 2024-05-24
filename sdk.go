@@ -23,7 +23,7 @@ func SetIdentityServer(address string) { identityAddress = address }
 
 func SetLogger(l *zap.Logger) { logger = l }
 
-func ValidateToken(ctx context.Context, token string) (data *Data, err error) {
+func ValidateToken(ctx context.Context, token string) (data *JwtData, err error) {
 	hostUrl, err := url.JoinPath(identityAddress, "/v1/check-token")
 	if err != nil {
 		if logger != nil {
@@ -174,8 +174,13 @@ func RemovePrefix(s string) string {
 	parts := strings.Split(strings.TrimSpace(s), ".")
 	return strings.TrimSpace(parts[len(parts)-1:][0])
 }
+
 func CtxWithDomain(ctx context.Context, domain string) context.Context {
 	return context.WithValue(ctx, domain_key, domain)
+}
+
+func CtxWithToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, jwt_token_key, token)
 }
 
 // Esta función concatena la cadena de la empresa con los sufijos proporcionados.
@@ -230,9 +235,6 @@ func Token(c context.Context) string {
 		return "####token-undefined####"
 	}
 	return token
-}
-func ContextWithDomain(ctx context.Context, domain string) context.Context {
-	return context.WithValue(ctx, domain_key, domain)
 }
 
 func CopyContext(ctx context.Context) context.Context {

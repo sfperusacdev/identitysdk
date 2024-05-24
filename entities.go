@@ -1,12 +1,12 @@
 package identitysdk
 
 type IdentityServerResponse struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
-	Data    Data   `json:"data"`
+	Type    string  `json:"type"`
+	Message string  `json:"message"`
+	Data    JwtData `json:"data"`
 }
 
-type Data struct {
+type JwtData struct {
 	Session Session `json:"session"`
 	Jwt     Jwt     `json:"jwt"`
 }
