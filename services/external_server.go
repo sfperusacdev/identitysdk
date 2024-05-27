@@ -52,6 +52,16 @@ func (*ExternalBridgeService) makeRequest(ctx context.Context, baseUrl, enpointP
 	}
 	defer res.Body.Close()
 	var jsondecoder = json.NewDecoder(res.Body)
+	if res.StatusCode != http.StatusOK {
+		var apiresponse struct {
+			Message string `json:"message"`
+		}
+		if err := jsondecoder.Decode(&apiresponse); err != nil {
+			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", enpointPath)
+			return err
+		}
+		return errors.New(apiresponse.Message)
+	}
 	if err := jsondecoder.Decode(v); err != nil {
 		slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", enpointPath)
 		return err
