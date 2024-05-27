@@ -24,6 +24,15 @@ func (list ListDocumentoEstadoDto) Contains(s string) bool {
 	return false
 }
 
+func (s *ExternalBridgeService) GetEstadosDocumentoSegunTrabajador(
+	ctx context.Context, documento, codigoTrabajador string) (ListDocumentoEstadoDto, error) {
+	puesto, err := s.GetTrabajadorPosicion(ctx, codigoTrabajador)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetEstadosDocumentoSegunPosicion(ctx, documento, puesto)
+}
+
 func (s *ExternalBridgeService) GetEstadosDocumentoSegunPosicion(
 	ctx context.Context, documento, posicion string) (ListDocumentoEstadoDto, error) {
 	posiciones, err := s.GetPuestosInferiores(ctx, posicion)
