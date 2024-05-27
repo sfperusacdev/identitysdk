@@ -66,6 +66,7 @@ const (
 	asistencia_service string = "com.sfperusac.asistencia"
 	syncdata_service   string = "com.sfperusac.syncdata"
 	contratos_service  string = "com.sfperusac.contratos"
+	general_service    string = "com.sfperusac.general"
 	tareoapp_service   string = "com.sfperusac.tareoapp"
 )
 
@@ -91,4 +92,8 @@ func GetContratosServiceURL(ctx context.Context, companyCode string) (string, er
 
 func GetTareoServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return GetServiceURL(ctx, companyCode, tareoapp_service)
+}
+
+func GetGeneralServiceURL(ctx context.Context, companyCode string) (string, error) {
+	return GetServiceURL(ctx, companyCode, general_service)
 }
