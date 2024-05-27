@@ -24,6 +24,15 @@ func (list ListDocumentoEstadoDto) Contains(s string) bool {
 	return false
 }
 
+func (s *ExternalBridgeService) GetEstadosDocumentoSegunUser(
+	ctx context.Context, documento string) (ListDocumentoEstadoDto, error) {
+	if identitysdk.HasPerm(ctx, "admin") {
+		return s.GetEstadosDocumentoSegunPosicion(ctx, documento, "--")
+	}
+	var trabajador = identitysdk.TrabajadorAsociado(ctx)
+	return s.GetEstadosDocumentoSegunTrabajador(ctx, documento, trabajador)
+}
+
 func (s *ExternalBridgeService) GetEstadosDocumentoSegunTrabajador(
 	ctx context.Context, documento, codigoTrabajador string) (ListDocumentoEstadoDto, error) {
 	puesto, err := s.GetTrabajadorPosicion(ctx, codigoTrabajador)
