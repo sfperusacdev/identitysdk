@@ -24,8 +24,10 @@ func (*ExternalBridgeService) readCompanyAndToken(ctx context.Context) (string, 
 	var token = identitysdk.Token(ctx)
 	return company, token
 }
-
-func (*ExternalBridgeService) makeRequest(ctx context.Context, baseUrl, enpointPath, token string, v any) error {
+func (s *ExternalBridgeService) makeRequest(ctx context.Context, baseUrl, enpointPath, token string, v any) error {
+	return s.makeRequestWithQueryPrams(ctx, baseUrl, enpointPath, token, nil, v)
+}
+func (*ExternalBridgeService) makeRequestWithQueryPrams(ctx context.Context, baseUrl, enpointPath, token string, queryParmas url.Values, v any) error {
 	endpoint, err := url.JoinPath(baseUrl, enpointPath)
 	if err != nil {
 		slog.Error(
@@ -43,6 +45,9 @@ func (*ExternalBridgeService) makeRequest(ctx context.Context, baseUrl, enpointP
 			"endpoint", endpoint,
 		)
 		return err
+	}
+	if queryParmas != nil {
+		req.URL.RawQuery = queryParmas.Encode()
 	}
 	req.Header.Set("Authorization", token)
 	res, err := http.DefaultClient.Do(req)
