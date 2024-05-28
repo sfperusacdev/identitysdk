@@ -1,14 +1,11 @@
 package identitysdk
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/user0608/goones/answer"
 	"github.com/user0608/goones/errs"
 	"go.uber.org/zap"
@@ -22,53 +19,6 @@ var (
 func SetIdentityServer(address string) { identityAddress = address }
 
 func SetLogger(l *zap.Logger) { logger = l }
-
-func ValidateToken(ctx context.Context, token string) (data *JwtData, err error) {
-	hostUrl, err := url.JoinPath(identityAddress, "/v1/check-token")
-	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
-		return nil, errs.Internal(errs.ErrInternal)
-	}
-	var buff bytes.Buffer
-	var payload = struct {
-		Token string `json:"token"`
-	}{Token: token}
-	if err := json.NewEncoder(&buff).Encode(&payload); err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
-		return nil, errs.Internal(errs.ErrInternal)
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, hostUrl, &buff)
-	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
-		return nil, errs.Internal(errs.ErrInternal)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
-		return nil, errs.Internal("Auth server no responde")
-	}
-	defer res.Body.Close()
-	var response IdentityServerResponse
-	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
-		return nil, errs.Internal(errs.ErrInternal)
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, errs.Bad(response.Message)
-	}
-	return &response.Data, nil
-}
 
 type keyType string
 
@@ -86,7 +36,7 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if token == "" {
 			return answer.Err(c, errs.Bad("[close] token no encontrado"))
 		}
-		data, err := ValidateToken(c.Request().Context(), token)
+		data, err := validateTokenWithCache(c.Request().Context(), token)
 		if err != nil {
 			return answer.Err(c, err)
 		}
@@ -118,12 +68,12 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 	}
 }
 
-func JwtClaims(c context.Context) (Jwt, bool) {
+func JwtClaims(c context.Context) (entities.Jwt, bool) {
 	values := c.Value(jwt_claims_key)
 	if values == nil {
-		return Jwt{}, false
+		return entities.Jwt{}, false
 	}
-	v, ok := values.(Jwt)
+	v, ok := values.(entities.Jwt)
 	if !ok {
 		if logger != nil {
 			logger.Error("tokendata assert error")
@@ -132,12 +82,12 @@ func JwtClaims(c context.Context) (Jwt, bool) {
 	return v, ok
 }
 
-func ReadSession(c context.Context) (Session, bool) {
+func ReadSession(c context.Context) (entities.Session, bool) {
 	values := c.Value(jwt_session_key)
 	if values == nil {
-		return Session{}, false
+		return entities.Session{}, false
 	}
-	v, ok := values.(Session)
+	v, ok := values.(entities.Session)
 	if !ok {
 		if logger != nil {
 			logger.Error("tokendata assert error")

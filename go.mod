@@ -3,9 +3,11 @@ module github.com/sfperusacdev/identitysdk
 go 1.20
 
 require (
+	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/user0608/goones v0.2.5
+	github.com/user0608/ifdevmode v0.0.3
 	go.uber.org/zap v1.26.0
 )
 
