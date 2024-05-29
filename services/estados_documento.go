@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"math"
 	"net/url"
 	"path"
 	"strings"
@@ -11,8 +12,11 @@ import (
 )
 
 type ListDocumentoEstadoDto []struct {
-	Estado string `json:"estado"`
-	Peso   int64  `json:"peso"`
+	Estado                string   `json:"estado"`
+	Peso                  int64    `json:"peso"`
+	MontoMaximo           *float64 `json:"monto_maximo"`
+	MontoMaximoAcumulado  *float64 `json:"monto_maximo_acumulado"`
+	MontoAcumuladoPeriodo *string  `json:"monto_acumulado_periodo"`
 }
 
 func (list ListDocumentoEstadoDto) Contains(s string) bool {
@@ -22,6 +26,34 @@ func (list ListDocumentoEstadoDto) Contains(s string) bool {
 		}
 	}
 	return false
+}
+
+func (list ListDocumentoEstadoDto) MontoMaximo(s string) float64 {
+	for _, itm := range list {
+		if itm.Estado == s {
+			if itm.MontoMaximo == nil {
+				return math.MaxInt
+			}
+			return *itm.MontoMaximo
+		}
+	}
+	return 0
+}
+
+func (list ListDocumentoEstadoDto) MontoMaximoAcumulado(s string) (float64, string) {
+	for _, itm := range list {
+		if itm.Estado == s {
+			if itm.MontoMaximoAcumulado == nil {
+				if itm.MontoAcumuladoPeriodo == nil {
+					return 0, ""
+
+				}
+				return math.MaxInt, *itm.MontoAcumuladoPeriodo
+			}
+			return *itm.MontoMaximoAcumulado, *itm.MontoAcumuladoPeriodo
+		}
+	}
+	return 0, ""
 }
 
 func (s *ExternalBridgeService) GetEstadosDocumentoSegunUser(
