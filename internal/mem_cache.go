@@ -32,7 +32,7 @@ type jwtData struct {
 }
 
 func (*sessioncache) tokenData(token string) (jwtData, error) {
-	var parts = strings.Split(token, "")
+	var parts = strings.Split(token, ".")
 	if len(parts) != 3 {
 		return jwtData{}, errors.New("invalid jwt token value")
 	}
@@ -53,7 +53,7 @@ func (*sessioncache) tokenData(token string) (jwtData, error) {
 func (s *sessioncache) Validar(ctx context.Context, token string) (jwtData, error) {
 	info, err := s.tokenData(token)
 	if err != nil {
-		slog.Error("error processing token", "error", err, "token", token)
+		slog.Error("processing token", "error", err, "token", token)
 		return jwtData{}, err
 	}
 	if s.err != nil {
@@ -134,7 +134,7 @@ var DefaultCache MemCacheService
 func init() {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
 	if err != nil {
-		slog.Warn("error creating cache")
+		slog.Warn("creating cache")
 	}
 	DefaultCache = &sessioncache{cache, err}
 }
