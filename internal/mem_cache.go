@@ -36,7 +36,7 @@ func (*sessioncache) tokenData(token string) (jwtData, error) {
 	if len(parts) != 3 {
 		return jwtData{}, errors.New("invalid jwt token value")
 	}
-	data, err := base64.StdEncoding.DecodeString(parts[1])
+	data, err := base64.RawStdEncoding.DecodeString(parts[1])
 	if err != nil {
 		return jwtData{}, err
 	}
