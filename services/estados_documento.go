@@ -14,6 +14,9 @@ import (
 type ListDocumentoEstadoDto []struct {
 	Estado                string   `json:"estado"`
 	Peso                  int64    `json:"peso"`
+	IsFinal               bool     `json:"is_final"`
+	Color                 *string  `json:"color"`
+	Icon                  *string  `json:"icon"`
 	MontoMaximo           *float64 `json:"monto_maximo"`
 	MontoMaximoAcumulado  *float64 `json:"monto_maximo_acumulado"`
 	MontoAcumuladoPeriodo *string  `json:"monto_acumulado_periodo"`
