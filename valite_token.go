@@ -9,13 +9,13 @@ import (
 	"net/url"
 
 	"github.com/sfperusacdev/identitysdk/entities"
-	"github.com/sfperusacdev/identitysdk/internal"
+	sessioncache "github.com/sfperusacdev/identitysdk/internal/session_cache"
 	"github.com/user0608/goones/errs"
 	"github.com/user0608/ifdevmode"
 )
 
 func validateTokenWithCache(ctx context.Context, token string) (*entities.JwtData, error) {
-	var cacheData = internal.DefaultCache.Get(ctx, token)
+	var cacheData = sessioncache.DefaultCache.Get(ctx, token)
 	if cacheData != nil {
 		if ifdevmode.Yes() {
 			slog.Info("Session data read from cache",
@@ -32,7 +32,7 @@ func validateTokenWithCache(ctx context.Context, token string) (*entities.JwtDat
 		return nil, err
 	}
 	if jwtData != nil {
-		internal.DefaultCache.Set(ctx, token, *jwtData)
+		sessioncache.DefaultCache.Set(ctx, token, *jwtData)
 	}
 	return jwtData, nil
 }

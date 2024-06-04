@@ -17,6 +17,7 @@ var (
 )
 
 func SetIdentityServer(address string) { identityAddress = address }
+func GetIdentityServer() string        { return identityAddress }
 
 func SetLogger(l *zap.Logger) { logger = l }
 

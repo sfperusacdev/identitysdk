@@ -1,4 +1,4 @@
-package internal
+package sessioncache
 
 import (
 	"bytes"
@@ -116,10 +116,10 @@ func (s *sessioncache) Get(ctx context.Context, token string) *entities.JwtData 
 	}
 	foundData, err := s.cache.Get(info.ID)
 	if err != nil {
-		if errors.Is(err, bigcache.ErrEntryNotFound) {
-			return nil
+		if !errors.Is(err, bigcache.ErrEntryNotFound) {
+			slog.Error("Failed to retrieve data from cache", "cacheKey", info.ID, "action", "discard")
 		}
-		slog.Error("Failed to retrieve data from cache", "cacheKey", info.ID, "action", "discard")
+		return nil
 	}
 	jwtData, err := s.decodeGob(foundData)
 	if err != nil {
