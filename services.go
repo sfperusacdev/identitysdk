@@ -61,13 +61,15 @@ func GetServiceURL(ctx context.Context, companyCode string, resourceCode string)
 }
 
 const (
-	almacen_service    string = "com.sfperusac.almacen"
-	sfsire_service     string = "com.sfperusac.sfsire"
-	asistencia_service string = "com.sfperusac.asistencia"
-	syncdata_service   string = "com.sfperusac.syncdata"
-	contratos_service  string = "com.sfperusac.contratos"
-	general_service    string = "com.sfperusac.general"
-	tareoapp_service   string = "com.sfperusac.tareoapp"
+	almacen_service      string = "com.sfperusac.almacen"
+	sfsire_service       string = "com.sfperusac.sfsire"
+	asistencia_service   string = "com.sfperusac.asistencia"
+	syncdata_service     string = "com.sfperusac.syncdata"
+	contratos_service    string = "com.sfperusac.contratos"
+	general_service      string = "com.sfperusac.general"
+	tareoapp_service     string = "com.sfperusac.tareoapp"
+	whatsapp_api_service string = "con.sfperusac.whatsapp_api"
+	mensajeria_service   string = "com.sfperusac.mensajeria"
 )
 
 func GetAlmacenServiceURL(ctx context.Context, companyCode string) (string, error) {
@@ -96,4 +98,12 @@ func GetTareoServiceURL(ctx context.Context, companyCode string) (string, error)
 
 func GetGeneralServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return GetServiceURL(ctx, companyCode, general_service)
+}
+
+func GetWhatsAppApiServiceURL(ctx context.Context, companyCode string) (string, error) {
+	return GetServiceURL(ctx, companyCode, whatsapp_api_service)
+}
+
+func GetMensajeriaServiceURL(ctx context.Context, companyCode string) (string, error) {
+	return GetServiceURL(ctx, companyCode, mensajeria_service)
 }
