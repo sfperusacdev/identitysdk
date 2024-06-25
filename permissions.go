@@ -2,6 +2,8 @@ package identitysdk
 
 import "context"
 
+func IsAdmin(ctx context.Context) bool { return HasPerm(ctx, "admin") }
+
 func HasPerm(ctx context.Context, permission string) bool {
 	session, ok := ReadSession(ctx)
 	if !ok {

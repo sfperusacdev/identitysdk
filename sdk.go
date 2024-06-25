@@ -44,13 +44,18 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if data == nil {
 			return answer.Err(c, errs.Bad("[close] session invalida"))
 		}
-		ctx := context.WithValue(c.Request().Context(), jwt_claims_key, data.Jwt)
-		ctx = context.WithValue(ctx, jwt_session_key, data.Session)
-		ctx = context.WithValue(ctx, jwt_token_key, token)
-		ctx = context.WithValue(ctx, domain_key, data.Jwt.Empresa)
-		c.SetRequest(c.Request().WithContext(ctx))
+		var newContext = BuildContext(c.Request().Context(), token, data)
+		c.SetRequest(c.Request().WithContext(newContext))
 		return next(c)
 	}
+}
+
+func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
+	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
+	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
+	newctx = context.WithValue(newctx, jwt_token_key, token)
+	newctx = context.WithValue(newctx, domain_key, data.Jwt.Empresa)
+	return newctx
 }
 
 const sucursal_codigo_key = keyType("sucursal_codigo_key")
