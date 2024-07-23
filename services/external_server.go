@@ -31,7 +31,7 @@ func (*ExternalBridgeService) makeRequestWithQueryPrams(ctx context.Context, bas
 	endpoint, err := url.JoinPath(baseUrl, enpointPath)
 	if err != nil {
 		slog.Error(
-			"error joining base server url with `"+enpointPath+"`",
+			"joining base server url with `"+enpointPath+"`",
 			"error", err,
 			"baseurl", baseUrl,
 		)
@@ -65,6 +65,7 @@ func (*ExternalBridgeService) makeRequestWithQueryPrams(ctx context.Context, bas
 			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", enpointPath)
 			return err
 		}
+		slog.Info("service response error", "message", err)
 		return errors.New(apiresponse.Message)
 	}
 	if err := jsondecoder.Decode(v); err != nil {
