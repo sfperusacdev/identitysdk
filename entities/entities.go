@@ -13,6 +13,7 @@ type Jwt struct {
 	UsuarioReff       string `json:"usuario_reff"`
 	IntegrationURL    string `json:"integration_url"`
 	TabajadorCodigo   string `json:"tabajador_codigo"`
+	Zona              string `json:"zona"`
 }
 
 type Session struct {

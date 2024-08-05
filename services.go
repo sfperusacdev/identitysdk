@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type queryServiceURLResponse struct {
@@ -106,4 +107,20 @@ func GetWhatsAppApiServiceURL(ctx context.Context, companyCode string) (string, 
 
 func GetMensajeriaServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return GetServiceURL(ctx, companyCode, mensajeria_service)
+}
+
+func Tz(ctx context.Context) (*time.Location, error) {
+	claims, ok := JwtClaims(ctx)
+	if !ok {
+		return nil, errors.New("sesión inválida, contexto no encontrado")
+	}
+	if claims.Zona == "" {
+		return nil, errors.New("zona horaria no definida para este dominio")
+	}
+	location, err := time.LoadLocation(claims.Zona)
+	if err != nil {
+		slog.Error("load location", "error", err, "tz", claims.Zona)
+		return nil, err
+	}
+	return location, nil
 }
