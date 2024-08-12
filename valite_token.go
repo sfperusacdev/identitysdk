@@ -14,7 +14,7 @@ import (
 	"github.com/user0608/ifdevmode"
 )
 
-func validateTokenWithCache(ctx context.Context, token string) (*entities.JwtData, error) {
+func ValidateTokenWithCache(ctx context.Context, token string) (*entities.JwtData, error) {
 	var cacheData = sessioncache.DefaultCache.Get(ctx, token)
 	if cacheData != nil {
 		if ifdevmode.Yes() {

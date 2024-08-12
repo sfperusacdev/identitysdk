@@ -45,7 +45,7 @@ func (*sessioncache) tokenData(token string) (jwtData, error) {
 		return jwtData{}, err
 	}
 	if jsonObject.ID == "" {
-		return jwtData{}, errors.New("invalid jwt toke id")
+		return jsonObject, errors.New("invalid jwt toke id")
 	}
 	return jsonObject, nil
 }
@@ -60,12 +60,12 @@ func (s *sessioncache) Validar(ctx context.Context, token string) (jwtData, erro
 		slog.Info("Cache error detected: discarding value",
 			"cacheKey", info.ID,
 			"action", "discard")
-		return jwtData{}, err
+		return info, err
 	}
 	var exp = time.Unix(info.Exp, 0)
 	var now = time.Now().Add(-1 * maxchache)
-	if now.Before(exp) {
-		return jwtData{}, err
+	if now.After(exp) {
+		return jwtData{}, errors.New("the session has expired")
 	}
 	return info, nil
 }

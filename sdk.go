@@ -37,7 +37,7 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if token == "" {
 			return answer.Err(c, errs.Bad("[close] token no encontrado"))
 		}
-		data, err := validateTokenWithCache(c.Request().Context(), token)
+		data, err := ValidateTokenWithCache(c.Request().Context(), token)
 		if err != nil {
 			return answer.Err(c, err)
 		}
