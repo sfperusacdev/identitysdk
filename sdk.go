@@ -153,6 +153,8 @@ func Empresa(c context.Context, suffix ...string) string {
 	return domain + suff
 }
 
+// Deprecated: ReferenciaEmpresa a sido deprecado, usar IntegracionExternaCodigo
+// los nuevos metodos estan integrados en el servicio de ExternalBridgeService
 func ReferenciaEmpresa(c context.Context) string {
 	data, ok := JwtClaims(c)
 	if !ok {
@@ -161,6 +163,8 @@ func ReferenciaEmpresa(c context.Context) string {
 	return data.ReferenciaEmpresa
 }
 
+// Deprecated: IntegracionURl a sido deprecado, usar IntegracionExternaURl
+// los nuevos metodos estan integrados en el servicio de ExternalBridgeService
 func IntegracionURl(c context.Context) string {
 	data, ok := JwtClaims(c)
 	if !ok {
