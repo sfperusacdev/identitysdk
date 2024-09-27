@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/sfperusacdev/identitysdk"
@@ -13,6 +14,12 @@ import (
 
 // IntegracionExternaCodigo devuelve el codigo de la compania en el sistema externo
 func (s *ExternalBridgeService) IntegracionExternaCodigo(ctx context.Context, company string) (string, error) {
+	{ // variable de entorno, solo para propositos de debug
+		var debugValue = os.Getenv("DEBUG_OVERRIDE_INTEGRATION_EXTERNAL_CODE")
+		if debugValue != "" {
+			return debugValue, nil
+		}
+	}
 	var cachedValue = integracioncache.DefaultCache.Get(ctx, company)
 	if cachedValue != nil {
 		if ifdevmode.Yes() {
@@ -45,7 +52,13 @@ func (s *ExternalBridgeService) integracionExternaURlSplit(val string) (string, 
 
 // IntegracionExternaCodigo devuelve la url del servicio de la compania en el sistema externo
 // devuleve true en el segundo campo para indicar que el servicio de integracion es de solo lecutra
-func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, company string) (string, bool, error) {
+func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, company string) (integrationURL string, readOnly bool, err error) {
+	{ // variable de entorno, solo para propositos de debug
+		var debugValue = os.Getenv("DEBUG_OVERRIDE_INTEGRATION_EXTERNAL_URL")
+		if debugValue != "" {
+			return debugValue, false, nil
+		}
+	}
 	var cachedValue = integracioncache.DefaultCache.Get(ctx, company)
 	if cachedValue != nil {
 		if ifdevmode.Yes() {
