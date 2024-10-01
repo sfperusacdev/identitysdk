@@ -56,7 +56,8 @@ func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, compa
 	{ // variable de entorno, solo para propositos de debug
 		var debugValue = os.Getenv("DEBUG_OVERRIDE_INTEGRATION_EXTERNAL_URL")
 		if debugValue != "" {
-			return debugValue, false, nil
+			value, readOnly := s.integracionExternaURlSplit(debugValue)
+			return value, readOnly, nil
 		}
 	}
 	var cachedValue = integracioncache.DefaultCache.Get(ctx, company)
