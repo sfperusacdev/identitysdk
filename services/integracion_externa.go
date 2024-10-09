@@ -41,11 +41,11 @@ func (s *ExternalBridgeService) IntegracionExternaCodigo(ctx context.Context, co
 }
 
 func (s *ExternalBridgeService) integracionExternaURlSplit(val string) (string, bool) {
-	var values = strings.Split(val, ":")
-	if len(values) == 2 {
-		if values[1] == "ro" {
-			return strings.TrimRight(values[0], "/"), true
-		}
+	const suffix = ":ro"
+	val = strings.TrimSpace(val)
+	if strings.HasSuffix(val, suffix) {
+		var val = strings.TrimSuffix(val, suffix)
+		return strings.TrimRight(val, "/"), true
 	}
 	return strings.TrimRight(val, "/"), false
 }
