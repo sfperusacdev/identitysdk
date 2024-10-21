@@ -49,12 +49,49 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+func firstNoEmpty(vals ...string) string {
+	for _, s := range vals {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		apikey := firstNoEmpty(
+			c.Request().Header.Get("x-api-key"),
+			c.Request().Header.Get("X-API-KEY"),
+		)
+		if apikey == "" {
+			return answer.Err(c, errs.Bad("[close] API KEY no encontrado"))
+		}
+		data, err := ValidateApiKeyWithCache(c.Request().Context(), apikey)
+		if err != nil {
+			return answer.Err(c, err)
+		}
+		if data == nil {
+			return answer.Err(c, errs.Bad("[close] api key session invalida"))
+		}
+		var newContext = BuildApikeyContext(c.Request().Context(), apikey, &data.Apikey)
+		c.SetRequest(c.Request().WithContext(newContext))
+		return next(c)
+	}
+}
 
 func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
 	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
 	newctx = context.WithValue(newctx, jwt_token_key, token)
 	newctx = context.WithValue(newctx, domain_key, data.Jwt.Empresa)
+	return newctx
+}
+
+func BuildApikeyContext(ctx context.Context, apikey string, data *entities.Apikey) context.Context {
+	newctx := context.WithValue(ctx, jwt_claims_key, entities.Jwt{Empresa: data.Empresa})
+	newctx = context.WithValue(newctx, jwt_token_key, apikey)
+	newctx = context.WithValue(newctx, domain_key, data.Empresa)
 	return newctx
 }
 
