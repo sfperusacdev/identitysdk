@@ -8,5 +8,5 @@ import (
 type VerifyApiKey struct{}
 
 func (*VerifyApiKey) Use() []echo.MiddlewareFunc {
-	return []echo.MiddlewareFunc{identitysdk.CheckJwtMiddleware}
+	return []echo.MiddlewareFunc{identitysdk.CheckApiKeyMiddleware}
 }
