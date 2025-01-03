@@ -40,7 +40,7 @@ func ValidateApiKey(ctx context.Context, apikey string) (data *entities.ApikeyDa
 		if logger != nil {
 			logger.Error(err.Error())
 		}
-		return nil, errs.Internal(errs.ErrInternal)
+		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
 	var buff bytes.Buffer
 	var payload = struct {
@@ -50,14 +50,14 @@ func ValidateApiKey(ctx context.Context, apikey string) (data *entities.ApikeyDa
 		if logger != nil {
 			logger.Error(err.Error())
 		}
-		return nil, errs.Internal(errs.ErrInternal)
+		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, hostUrl, &buff)
 	if err != nil {
 		if logger != nil {
 			logger.Error(err.Error())
 		}
-		return nil, errs.Internal(errs.ErrInternal)
+		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	res, err := http.DefaultClient.Do(req)
@@ -65,7 +65,7 @@ func ValidateApiKey(ctx context.Context, apikey string) (data *entities.ApikeyDa
 		if logger != nil {
 			logger.Error(err.Error())
 		}
-		return nil, errs.Internal("Auth server no responde")
+		return nil, errs.InternalErrorDirect("Auth server no responde")
 	}
 	defer res.Body.Close()
 	var response struct {
@@ -77,10 +77,10 @@ func ValidateApiKey(ctx context.Context, apikey string) (data *entities.ApikeyDa
 		if logger != nil {
 			logger.Error(err.Error())
 		}
-		return nil, errs.Internal(errs.ErrInternal)
+		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, errs.Bad(response.Message)
+		return nil, errs.BadRequestDirect(response.Message)
 	}
 	return &response.Data, nil
 }

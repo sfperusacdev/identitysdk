@@ -35,14 +35,14 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			token = c.QueryParam("token")
 		}
 		if token == "" {
-			return answer.Err(c, errs.Bad("[close] token no encontrado"))
+			return answer.Err(c, errs.BadRequestDirect("[close] token no encontrado"))
 		}
 		data, err := ValidateTokenWithCache(c.Request().Context(), token)
 		if err != nil {
 			return answer.Err(c, err)
 		}
 		if data == nil {
-			return answer.Err(c, errs.Bad("[close] session invalida"))
+			return answer.Err(c, errs.BadRequestDirect("[close] session invalida"))
 		}
 		var newContext = BuildContext(c.Request().Context(), token, data)
 		c.SetRequest(c.Request().WithContext(newContext))
@@ -65,14 +65,14 @@ func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Request().Header.Get("X-API-KEY"),
 		)
 		if apikey == "" {
-			return answer.Err(c, errs.Bad("[close] API KEY no encontrado"))
+			return answer.Err(c, errs.BadRequestDirect("[close] API KEY no encontrado"))
 		}
 		data, err := ValidateApiKeyWithCache(c.Request().Context(), apikey)
 		if err != nil {
 			return answer.Err(c, err)
 		}
 		if data == nil {
-			return answer.Err(c, errs.Bad("[close] api key session invalida"))
+			return answer.Err(c, errs.BadRequestDirect("[close] api key session invalida"))
 		}
 		var newContext = BuildApikeyContext(c.Request().Context(), apikey, &data.Apikey)
 		c.SetRequest(c.Request().WithContext(newContext))
@@ -103,7 +103,7 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 	return func(c echo.Context) error {
 		codigo := c.QueryParam("sucursal")
 		if codigo == "" {
-			return answer.Err(c, errs.Bad("el código de sucursal es necesario en los query params"))
+			return answer.Err(c, errs.BadRequestDirect("el código de sucursal es necesario en los query params"))
 		}
 		ctx := context.WithValue(c.Request().Context(), sucursal_codigo_key, codigo)
 		c.SetRequest(c.Request().WithContext(ctx))
