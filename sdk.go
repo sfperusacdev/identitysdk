@@ -28,6 +28,8 @@ const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
 const domain_key = keyType("domain_key")
 
+type JwtMiddleware echo.MiddlewareFunc
+
 func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		token := c.Request().Header.Get("Authorization")
@@ -49,6 +51,9 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+func NewCheckJwtMiddleware() JwtMiddleware { return CheckJwtMiddleware }
+
 func firstNoEmpty(vals ...string) string {
 	for _, s := range vals {
 		if s != "" {
@@ -57,6 +62,8 @@ func firstNoEmpty(vals ...string) string {
 	}
 	return ""
 }
+
+type ApiKeyMiddleware echo.MiddlewareFunc
 
 func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -80,6 +87,8 @@ func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func NewCheckApiKeyMiddleware() ApiKeyMiddleware { return CheckApiKeyMiddleware }
+
 func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
 	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
@@ -99,6 +108,8 @@ const sucursal_codigo_key = keyType("sucursal_codigo_key")
 
 // Este middleware verifica que el query param `sucursal` no esté vacío.
 // Si el código de sucursal está vacío, devuelve un error de tipo `errs.Bad`.
+type SucursalQueryParamMiddleware echo.MiddlewareFunc
+
 func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		codigo := c.QueryParam("sucursal")
@@ -109,6 +120,9 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 		c.SetRequest(c.Request().WithContext(ctx))
 		return next(c)
 	}
+}
+func NewSucursalQueryParamMiddleware() SucursalQueryParamMiddleware {
+	return EnsureSucursalQueryParamMiddleware
 }
 
 func JwtClaims(c context.Context) (entities.Jwt, bool) {
