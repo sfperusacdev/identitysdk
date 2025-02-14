@@ -85,7 +85,7 @@ func buildMiddlewares(
 		ensureSessionf()
 	}
 
-	if _, ok := route.(sucursalValidator); !ok {
+	if _, ok := route.(sucursalValidator); ok {
 		ensureSessionf()
 		middlewares = append(middlewares, echo.MiddlewareFunc(sucursalMidl))
 	}
