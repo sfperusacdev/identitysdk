@@ -39,7 +39,7 @@ func newEchoServer(
 
 	// Middleware global
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "time=${time_unix}, method=${method}, uri=${uri}, status=${status}, ip=${remote_ip}, user_agent=${user_agent}, latency=${latency_human}\n",
+		Format: "time=${time_unix}, method=${method}, uri=${uri}, status=${status}, ip=${remote_ip}, latency=${latency_human}\n",
 	}))
 	e.Use(middleware.Recover())
 
