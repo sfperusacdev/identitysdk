@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"path"
 	"strings"
 
@@ -35,23 +36,33 @@ func (s *S3FileStore) getFullPath(filepath string) string {
 	return path.Join(s.subdirectory, filepath)
 }
 
-func (s *S3FileStore) Read(ctx context.Context, filepath string) []byte {
+func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error) {
 	fullPath := s.getFullPath(filepath)
 	obj, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
 	})
 	if err != nil {
-		return nil
+		slog.Error("Failed to get object from S3",
+			"bucket", s.bucketName,
+			"key", fullPath,
+			"error", err,
+		)
+		return nil, err
 	}
 	defer obj.Body.Close()
 
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, obj.Body); err != nil {
-		return nil
+		slog.Error("Failed to read object body from S3",
+			"bucket", s.bucketName,
+			"key", fullPath,
+			"error", err,
+		)
+		return nil, err
 	}
 
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error {
@@ -61,6 +72,13 @@ func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error 
 		Key:    aws.String(fullPath),
 		Body:   bytes.NewReader(data),
 	})
+	if err != nil {
+		slog.Error("Failed to save object to S3",
+			"bucket", s.bucketName,
+			"key", fullPath,
+			"error", err,
+		)
+	}
 	return err
 }
 
@@ -70,12 +88,34 @@ func (s *S3FileStore) Delete(ctx context.Context, filepath string) error {
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
 	})
+	if err != nil {
+		slog.Error("Failed to delete object from S3",
+			"bucket", s.bucketName,
+			"key", fullPath,
+			"error", err,
+		)
+	}
 	return err
 }
 
 func (s *S3FileStore) Replace(ctx context.Context, path string, data []byte) error {
 	if err := s.Delete(ctx, path); err != nil {
+		slog.Error("Failed to delete object before replacing in S3",
+			"bucket", s.bucketName,
+			"key", path,
+			"error", err,
+		)
 		return err
 	}
-	return s.Save(ctx, path, data)
+
+	if err := s.Save(ctx, path, data); err != nil {
+		slog.Error("Failed to save object while replacing in S3",
+			"bucket", s.bucketName,
+			"key", path,
+			"error", err,
+		)
+		return err
+	}
+
+	return nil
 }
