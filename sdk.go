@@ -2,24 +2,21 @@ package identitysdk
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/user0608/goones/answer"
 	"github.com/user0608/goones/errs"
-	"go.uber.org/zap"
 )
 
 var (
 	identityAddress string
-	logger          *zap.Logger
 )
 
 func SetIdentityServer(address string) { identityAddress = address }
 func GetIdentityServer() string        { return identityAddress }
-
-func SetLogger(l *zap.Logger) { logger = l }
 
 type keyType string
 
@@ -132,9 +129,7 @@ func JwtClaims(c context.Context) (entities.Jwt, bool) {
 	}
 	v, ok := values.(entities.Jwt)
 	if !ok {
-		if logger != nil {
-			logger.Error("tokendata assert error")
-		}
+		slog.Error("tokendata assert error")
 	}
 	return v, ok
 }
@@ -146,9 +141,7 @@ func ReadSession(c context.Context) (entities.Session, bool) {
 	}
 	v, ok := values.(entities.Session)
 	if !ok {
-		if logger != nil {
-			logger.Error("tokendata assert error")
-		}
+		slog.Error("tokendata assert error")
 	}
 	return v, ok
 }

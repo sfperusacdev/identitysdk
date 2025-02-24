@@ -34,53 +34,53 @@ func ValidateApiKeyWithCache(ctx context.Context, apikey string) (*entities.Apik
 	return apikeydata, nil
 }
 
-func ValidateApiKey(ctx context.Context, apikey string) (data *entities.ApikeyData, err error) {
-	hostUrl, err := url.JoinPath(identityAddress, "/v1/check-apikey")
+func ValidateApiKey(ctx context.Context, apikey string) (*entities.ApikeyData, error) {
+	hostURL, err := url.JoinPath(identityAddress, "/v1/check-apikey")
 	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
+		slog.Error("failed to construct API key validation URL", "error", err)
 		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
+
 	var buff bytes.Buffer
-	var payload = struct {
+	payload := struct {
 		Apikey string `json:"apikey"`
 	}{Apikey: apikey}
+
 	if err := json.NewEncoder(&buff).Encode(&payload); err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
+		slog.Error("failed to encode API key payload", "error", err)
 		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, hostUrl, &buff)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, hostURL, &buff)
 	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
+		slog.Error("failed to create HTTP request", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
+		slog.Error("failed to send API key validation request", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect("Auth server no responde")
 	}
 	defer res.Body.Close()
+
 	var response struct {
 		Type    string              `json:"type"`
 		Message string              `json:"message"`
 		Data    entities.ApikeyData `json:"data"`
 	}
+
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		if logger != nil {
-			logger.Error(err.Error())
-		}
+		slog.Error("failed to decode API key validation response", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect(errs.ErrInternal)
 	}
+
 	if res.StatusCode != http.StatusOK {
+		slog.Warn("API key validation failed", "url", hostURL, "status", res.StatusCode, "message", response.Message)
 		return nil, errs.BadRequestDirect(response.Message)
 	}
+
 	return &response.Data, nil
 }
