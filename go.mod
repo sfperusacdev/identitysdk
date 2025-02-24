@@ -12,7 +12,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/stretchr/testify v1.10.0
-	github.com/user0608/goones v0.5.0
+	github.com/user0608/goones v0.7.0
 	github.com/user0608/ifdevmode v0.0.3
 	go.uber.org/fx v1.23.0
 	go.uber.org/zap v1.27.0
