@@ -171,8 +171,16 @@ func TrabajadorAsociado(c context.Context) string {
 // Esta función toma una cadena y realiza una operación de split por el carácter '.'.
 // Luego, devuelve el último segmento de la cadena resultante.
 func RemovePrefix(s string) string {
-	parts := strings.Split(strings.TrimSpace(s), ".")
-	return strings.TrimSpace(parts[len(parts)-1:][0])
+	s = strings.TrimSpace(s)
+	parts := strings.Split(s, ".")
+	if len(parts) == 0 {
+		return ""
+	}
+	return parts[len(parts)-1]
+}
+
+func EqualIgnoringPrefix(s1, s2 string) bool {
+	return RemovePrefix(s1) == RemovePrefix(s2)
 }
 
 func CtxWithDomain(ctx context.Context, domain string) context.Context {
