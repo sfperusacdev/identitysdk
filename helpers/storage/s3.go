@@ -1,10 +1,12 @@
-package helpers
+package storage
 
 import (
 	"bytes"
 	"context"
 	"io"
 	"log/slog"
+	"net/url"
+	"os"
 	"path"
 	"strings"
 
@@ -19,6 +21,25 @@ type S3FileStore struct {
 	s3Client     *s3.Client
 }
 
+var _ FileStorer = (*S3FileStore)(nil)
+
+func isValidURL(rawURL string) bool {
+	parsedURL, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return false
+	}
+
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return false
+	}
+	if parsedURL.Host == "" {
+		return false
+	}
+	return true
+}
+
+const envS3BaseURL = "S3_SDK_STORAGE_BASE_URL"
+
 func NewS3FileStore(ctx context.Context, awsRegion, bucketBasePath string) (*S3FileStore, error) {
 	conf, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion))
 	if err != nil {
@@ -26,8 +47,19 @@ func NewS3FileStore(ctx context.Context, awsRegion, bucketBasePath string) (*S3F
 	}
 	var parts = strings.Split(bucketBasePath, "/")
 	return &S3FileStore{
-		bucketName:   parts[0],
-		s3Client:     s3.NewFromConfig(conf),
+		bucketName: parts[0],
+		s3Client: s3.NewFromConfig(conf, func(o *s3.Options) {
+			value, exists := os.LookupEnv(envS3BaseURL)
+			if !exists {
+				return
+			}
+			if !isValidURL(value) {
+				slog.Warn("Invalid S3 base URL", "variable", envS3BaseURL, "url", value)
+				return
+			}
+			o.BaseEndpoint = &value
+			slog.Info("S3 base URL successfully configured", "url", value)
+		}),
 		subdirectory: strings.Join(parts[1:], "/"),
 	}, nil
 }
