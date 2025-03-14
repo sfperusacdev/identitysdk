@@ -64,6 +64,34 @@ func NewS3FileStore(ctx context.Context, awsRegion, bucketBasePath string) (*S3F
 	}, nil
 }
 
+func NewS3FileStoreWithBaseURL(ctx context.Context, baseURL, awsRegion, bucketBasePath string) (*S3FileStore, error) {
+	conf, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion))
+	if err != nil {
+		return nil, err
+	}
+
+	var parts = strings.Split(bucketBasePath, "/")
+
+	s3Client := s3.NewFromConfig(conf, func(o *s3.Options) {
+		if baseURL == "" {
+			slog.Warn("S3 base URL is empty, using default AWS endpoint")
+			return
+		}
+		if !isValidURL(baseURL) {
+			slog.Warn("Invalid S3 base URL", "url", baseURL)
+			return
+		}
+		o.BaseEndpoint = &baseURL
+		slog.Info("S3 base URL successfully configured", "url", baseURL)
+	})
+
+	return &S3FileStore{
+		bucketName:   parts[0],
+		s3Client:     s3Client,
+		subdirectory: strings.Join(parts[1:], "/"),
+	}, nil
+}
+
 func (s *S3FileStore) getFullPath(filepath string) string {
 	return path.Join(s.subdirectory, filepath)
 }
