@@ -118,6 +118,12 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 		return next(c)
 	}
 }
+
+func BuildContextWithSucursal(ctx context.Context, token, sucursal string, data *entities.JwtData) context.Context {
+	ctx = BuildContext(ctx, token, data)
+	return context.WithValue(ctx, sucursal_codigo_key, sucursal)
+}
+
 func NewSucursalQueryParamMiddleware() SucursalQueryParamMiddleware {
 	return EnsureSucursalQueryParamMiddleware
 }
@@ -196,11 +202,17 @@ func CtxWithToken(ctx context.Context, token string) context.Context {
 func Empresa(c context.Context, suffix ...string) string {
 	domain, ok := c.Value(domain_key).(string)
 	if !ok {
-		return "####empresa-no-found####"
+		domain = "####empresa-no-found####"
 	}
 	var suff string
 	for _, s := range suffix {
+		if s == "" {
+			continue
+		}
 		suff += "." + RemovePrefix(s)
+	}
+	if suff == "" {
+		return ""
 	}
 	return domain + suff
 }
@@ -232,12 +244,22 @@ func SucursalPrefix(c context.Context) string { return Sucursal(c, "%") }
 // Si la empresa es "e1", la sucursal es "s1" y los sufijos son ["c1", "c2", "c3"],
 // el resultado será "e1.s1.c1.c2.c3".
 func Sucursal(c context.Context, suffix ...string) string {
+	var values = []string{}
+	for _, v := range suffix {
+		if v == "" {
+			continue
+		}
+		values = append(values, v)
+	}
+	if len(values) == 0 {
+		return ""
+	}
 	value := c.Value(sucursal_codigo_key)
 	sucursal, ok := value.(string)
 	if !ok {
-		return "####sucursal-no-found####"
+		sucursal = "####sucursal-no-found####"
 	}
-	return Empresa(c, append([]string{sucursal}, suffix...)...)
+	return Empresa(c, append([]string{sucursal}, values...)...)
 }
 
 func Token(c context.Context) string {

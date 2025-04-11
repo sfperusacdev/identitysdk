@@ -10,8 +10,9 @@ import (
 )
 
 func createContext() context.Context {
-	return identitysdk.BuildContext(context.Background(), "", &entities.JwtData{
-		Jwt: entities.Jwt{Username: "kevin"},
+	return identitysdk.BuildContextWithSucursal(context.Background(), "", "sf001", &entities.JwtData{
+		Jwt:     entities.Jwt{Username: "kevin", Empresa: "sfperu"},
+		Session: entities.Session{Company: "sfperu"},
 	})
 }
 
