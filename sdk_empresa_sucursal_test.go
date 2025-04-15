@@ -18,13 +18,13 @@ func TestEmpresa(t *testing.T) {
 			name:     "NoSuffix",
 			ctx:      createContext(),
 			suffixes: nil,
-			expected: "",
+			expected: "sfperu",
 		},
 		{
 			name:     "EmptySingleSuffix",
 			ctx:      createContext(),
 			suffixes: []string{""},
-			expected: "",
+			expected: "sfperu",
 		},
 		{
 			name:     "Prefix",

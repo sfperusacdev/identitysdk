@@ -56,6 +56,8 @@ func GetServiceURL(ctx context.Context, companyCode string, resourceCode string)
 	}
 	var location = strings.TrimSpace(data.Data.Location)
 	if location == "" {
+		slog.Warn("QueryServiceURL: empty location", "status", res.Status,
+			"company", companyCode, "resource", resourceCode)
 		return "", errors.New("service not found")
 	}
 	return location, nil

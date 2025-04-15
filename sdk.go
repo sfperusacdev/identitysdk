@@ -212,7 +212,7 @@ func Empresa(c context.Context, suffix ...string) string {
 		suff += "." + RemovePrefix(s)
 	}
 	if suff == "" {
-		return ""
+		return domain
 	}
 	return domain + suff
 }
