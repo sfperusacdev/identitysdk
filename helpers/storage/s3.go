@@ -5,14 +5,14 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"net/url"
-	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/panjf2000/ants"
 )
 
 type S3FileStore struct {
@@ -23,22 +23,14 @@ type S3FileStore struct {
 
 var _ FileStorer = (*S3FileStore)(nil)
 
-func isValidURL(rawURL string) bool {
-	parsedURL, err := url.ParseRequestURI(rawURL)
-	if err != nil {
-		return false
-	}
-
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return false
-	}
-	if parsedURL.Host == "" {
-		return false
-	}
-	return true
+func NewS3FileStoreWithClient(ctx context.Context, bucket string, client *s3.Client) (*S3FileStore, error) {
+	var parts = strings.Split(bucket, "/")
+	return &S3FileStore{
+		bucketName:   parts[0],
+		s3Client:     client,
+		subdirectory: strings.Join(parts[1:], "/"),
+	}, nil
 }
-
-const envS3BaseURL = "S3_SDK_STORAGE_BASE_URL"
 
 func NewS3FileStore(ctx context.Context, awsRegion, bucketBasePath string) (*S3FileStore, error) {
 	conf, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion))
@@ -47,53 +39,36 @@ func NewS3FileStore(ctx context.Context, awsRegion, bucketBasePath string) (*S3F
 	}
 	var parts = strings.Split(bucketBasePath, "/")
 	return &S3FileStore{
-		bucketName: parts[0],
-		s3Client: s3.NewFromConfig(conf, func(o *s3.Options) {
-			value, exists := os.LookupEnv(envS3BaseURL)
-			if !exists {
-				return
-			}
-			if !isValidURL(value) {
-				slog.Warn("Invalid S3 base URL", "variable", envS3BaseURL, "url", value)
-				return
-			}
-			o.BaseEndpoint = &value
-			slog.Info("S3 base URL successfully configured", "url", value)
-		}),
-		subdirectory: strings.Join(parts[1:], "/"),
-	}, nil
-}
-
-func NewS3FileStoreWithBaseURL(ctx context.Context, baseURL, awsRegion, bucketBasePath string) (*S3FileStore, error) {
-	conf, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion))
-	if err != nil {
-		return nil, err
-	}
-
-	var parts = strings.Split(bucketBasePath, "/")
-
-	s3Client := s3.NewFromConfig(conf, func(o *s3.Options) {
-		if baseURL == "" {
-			slog.Warn("S3 base URL is empty, using default AWS endpoint")
-			return
-		}
-		if !isValidURL(baseURL) {
-			slog.Warn("Invalid S3 base URL", "url", baseURL)
-			return
-		}
-		o.BaseEndpoint = &baseURL
-		slog.Info("S3 base URL successfully configured", "url", baseURL)
-	})
-
-	return &S3FileStore{
 		bucketName:   parts[0],
-		s3Client:     s3Client,
+		s3Client:     s3.NewFromConfig(conf),
 		subdirectory: strings.Join(parts[1:], "/"),
 	}, nil
 }
 
 func (s *S3FileStore) getFullPath(filepath string) string {
 	return path.Join(s.subdirectory, filepath)
+}
+
+func (s *S3FileStore) List(ctx context.Context, filepath string) ([]string, error) {
+	prefix := s.getFullPath(filepath)
+	out, err := s.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.bucketName),
+		Prefix: aws.String(strings.Trim(prefix, "/")),
+	})
+	if err != nil {
+		slog.Error("Failed to list objects from S3",
+			"bucket", s.bucketName,
+			"prefix", prefix,
+			"error", err,
+		)
+		return nil, err
+	}
+
+	var keys []string
+	for _, item := range out.Contents {
+		keys = append(keys, *item.Key)
+	}
+	return keys, nil
 }
 
 func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error) {
@@ -140,6 +115,41 @@ func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error 
 		)
 	}
 	return err
+}
+func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(files))
+
+	pool, err := ants.NewPool(10) // define el número máximo de workers
+	if err != nil {
+		return err
+	}
+	defer pool.Release()
+
+	for path, data := range files {
+		p := path
+		d := data
+
+		wg.Add(1)
+		err := pool.Submit(func() {
+			defer wg.Done()
+			if err := s.Save(ctx, p, d); err != nil {
+				errCh <- err
+			}
+		})
+		if err != nil {
+			wg.Done()
+			return err
+		}
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	if len(errCh) > 0 {
+		return <-errCh
+	}
+	return nil
 }
 
 func (s *S3FileStore) Delete(ctx context.Context, filepath string) error {

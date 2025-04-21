@@ -7,4 +7,5 @@ type FileStorer interface {
 	Save(ctx context.Context, filepath string, data []byte) error
 	Delete(ctx context.Context, filepath string) error
 	Replace(ctx context.Context, filepath string, data []byte) error
+	List(ctx context.Context, filepath string) ([]string, error)
 }

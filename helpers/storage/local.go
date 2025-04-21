@@ -11,7 +11,7 @@ type LocalFileStore struct {
 	basePath string
 }
 
-var _ FileStorer = (*S3FileStore)(nil)
+var _ FileStorer = (*LocalFileStore)(nil)
 
 func NewLocalFileStore(basePath string) *LocalFileStore {
 	return &LocalFileStore{basePath: basePath}
@@ -19,6 +19,24 @@ func NewLocalFileStore(basePath string) *LocalFileStore {
 
 func (l *LocalFileStore) getFullPath(filePath string) string {
 	return filepath.Join(l.basePath, filePath)
+}
+
+func (l *LocalFileStore) List(ctx context.Context, filepath string) ([]string, error) {
+	fullPath := l.getFullPath(filepath)
+	entries, err := os.ReadDir(fullPath)
+	if err != nil {
+		slog.Error("Failed to list directory from local storage",
+			"path", fullPath,
+			"error", err,
+		)
+		return nil, err
+	}
+
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	return names, nil
 }
 
 func (l *LocalFileStore) Read(ctx context.Context, filepath string) ([]byte, error) {
