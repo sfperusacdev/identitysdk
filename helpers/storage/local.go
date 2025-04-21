@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type LocalFileStore struct {
@@ -71,6 +72,32 @@ func (l *LocalFileStore) Save(ctx context.Context, filePath string, data []byte)
 		)
 	}
 	return err
+}
+
+func (l *LocalFileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(files))
+
+	for path, data := range files {
+		p := path
+		d := data
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := l.Save(ctx, p, d); err != nil {
+				errCh <- err
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	if len(errCh) > 0 {
+		return <-errCh
+	}
+	return nil
 }
 
 func (l *LocalFileStore) Delete(ctx context.Context, filepath string) error {

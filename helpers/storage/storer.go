@@ -8,4 +8,5 @@ type FileStorer interface {
 	Delete(ctx context.Context, filepath string) error
 	Replace(ctx context.Context, filepath string, data []byte) error
 	List(ctx context.Context, filepath string) ([]string, error)
+	SaveBatch(ctx context.Context, files map[string][]byte) error
 }
