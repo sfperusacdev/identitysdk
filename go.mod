@@ -1,8 +1,8 @@
 module github.com/sfperusacdev/identitysdk
 
-go 1.22
+go 1.23.0
 
-toolchain go1.23.1
+toolchain go1.23.4
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.77.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.13.3
+	github.com/panjf2000/ants v1.3.0
 	github.com/stretchr/testify v1.10.0
 	github.com/user0608/goones v0.7.0
 	github.com/user0608/ifdevmode v0.0.3
@@ -40,6 +41,7 @@ require (
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/panjf2000/ants/v2 v2.11.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -49,6 +51,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.10.0 // indirect

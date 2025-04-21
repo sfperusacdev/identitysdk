@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/panjf2000/ants"
+	"github.com/panjf2000/ants/v2"
 )
 
 type S3FileStore struct {
@@ -24,6 +24,7 @@ type S3FileStore struct {
 var _ FileStorer = (*S3FileStore)(nil)
 
 func NewS3FileStoreWithClient(ctx context.Context, bucket string, client *s3.Client) (*S3FileStore, error) {
+	bucket = strings.Trim(bucket, "/")
 	var parts = strings.Split(bucket, "/")
 	return &S3FileStore{
 		bucketName:   parts[0],
