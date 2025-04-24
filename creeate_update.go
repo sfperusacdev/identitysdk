@@ -2,6 +2,7 @@ package identitysdk
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"log/slog"
@@ -22,8 +23,26 @@ type create struct {
 }
 
 func CreateBy(ctx context.Context, i any) {
+	var typ = reflect.TypeOf(i)
+	if typ.Kind() != reflect.Pointer {
+		slog.Warn("CreateBy expects a pointer to a map or struct", "got", typ.Kind())
+		return
+	}
 	var username = Username(ctx)
 	var now = time.Now()
+
+	typ = typ.Elem()
+	if typ.Kind() == reflect.Map {
+		var v = reflect.ValueOf(i).Elem()
+		var vnow = reflect.ValueOf(now)
+		var vusername = reflect.ValueOf(username)
+		v.SetMapIndex(reflect.ValueOf("created_at"), vnow)
+		v.SetMapIndex(reflect.ValueOf("created_by"), vusername)
+		v.SetMapIndex(reflect.ValueOf("updated_at"), vnow)
+		v.SetMapIndex(reflect.ValueOf("updated_by"), vusername)
+		return
+	}
+
 	createdBy := create{
 		UpdatedBy: username,
 		UpdatedAt: now,
@@ -36,8 +55,24 @@ func CreateBy(ctx context.Context, i any) {
 }
 
 func UpdateBy(ctx context.Context, i any) {
+	var typ = reflect.TypeOf(i)
+	if typ.Kind() != reflect.Pointer {
+		slog.Warn("UpdateBy expects a pointer to a map or struct", "got", typ.Kind())
+		return
+	}
 	var username = Username(ctx)
 	var now = time.Now()
+
+	typ = typ.Elem()
+	if typ.Kind() == reflect.Map {
+		var v = reflect.ValueOf(i).Elem()
+		var vnow = reflect.ValueOf(now)
+		var vusername = reflect.ValueOf(username)
+		v.SetMapIndex(reflect.ValueOf("updated_at"), vnow)
+		v.SetMapIndex(reflect.ValueOf("updated_by"), vusername)
+		return
+	}
+
 	updatedBy := update{
 		UpdatedBy: username,
 		UpdatedAt: now,
