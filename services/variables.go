@@ -24,7 +24,11 @@ func (s *ExternalBridgeService) ReadVariable(ctx context.Context, variableName s
 		Message string              `json:"message"`
 		Data    []entities.Variable `json:"data"`
 	}
-	if err := s.makeRequest(ctx, baseUrl, enpointPath, token, &apiresponse); err != nil {
+	if err := s.MakeRequest(ctx,
+		baseUrl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return "", err
 	}
 	variablecache.DefaultCache.SetVariables(ctx, company, apiresponse.Data)

@@ -33,7 +33,10 @@ func (s *ExternalBridgeService) IntegracionExternaCodigo(ctx context.Context, co
 		Message string                            `json:"message"`
 		Data    integracioncache.IntegracionState `json:"data"`
 	}
-	if err := s.makeRequest(ctx, baseUrl, enpointPath, "-", &apiresponse); err != nil {
+	if err := s.MakeRequest(ctx,
+		baseUrl, enpointPath,
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return "", err
 	}
 	integracioncache.DefaultCache.Set(ctx, company, apiresponse.Data)
@@ -74,7 +77,10 @@ func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, compa
 		Message string                            `json:"message"`
 		Data    integracioncache.IntegracionState `json:"data"`
 	}
-	if err := s.makeRequest(ctx, baseUrl, enpointPath, "-", &apiresponse); err != nil {
+	if err := s.MakeRequest(ctx,
+		baseUrl, enpointPath,
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return "", false, err
 	}
 	integracioncache.DefaultCache.Set(ctx, company, apiresponse.Data)

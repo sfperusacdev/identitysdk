@@ -1,12 +1,16 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/user0608/goones/errs"
 )
 
 func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities.ResumenTrabajadorDto, error) {
@@ -40,9 +44,12 @@ func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities
 			IsDisabled             bool       `json:"is_disabled"`
 		} `json:"data"`
 	}
-
 	var enpointPath = "/v1/fotocheck/trabajadores/json"
-	if err := s.makeRequest(ctx, baseurl, enpointPath, token, &apiresponse); err != nil {
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	var response = make([]entities.ResumenTrabajadorDto, 0, len(apiresponse.Data))
@@ -69,4 +76,46 @@ func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities
 		})
 	}
 	return response, nil
+}
+
+type FaztCreateTrabajadorDTO struct {
+	Codigo          string  `json:"codigo"`
+	Nombres         string  `json:"nombres"`
+	ApellidoMaterno string  `json:"apellido_materno"`
+	ApellidoPaterno string  `json:"apellido_paterno"`
+	PlanillaCodigo  *string `json:"planilla_codigo"`
+	Email           *string `json:"email"`
+	Telefono        *string `json:"telefono"`
+	Sexo            *string `json:"sexo"`
+}
+
+func (s *ExternalBridgeService) FastImportTrabajadores(ctx context.Context, trabajadores []FaztCreateTrabajadorDTO) error {
+	if len(trabajadores) == 0 {
+		return nil
+	}
+	company, token := s.readCompanyAndToken(ctx)
+	var requestBuff bytes.Buffer
+	bodyEncoder := json.NewEncoder(&requestBuff)
+	if err := bodyEncoder.Encode(trabajadores); err != nil {
+		slog.Error("error encoding trabajadores to JSON", "error", err, "company", company)
+		return errs.BadRequestDirect("no se pudo procesar la solicitud para importar trabajadores")
+	}
+
+	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)
+	if err != nil {
+		slog.Error("error retrieving contratos service URL", "error", err, "company", company)
+		return errs.BadRequestDirect("no se pudo obtener la URL del servicio de contratos")
+	}
+	if err := s.MakeRequest(ctx,
+		baseurl,
+		"/v1/trabajadores/fazt/import",
+		WithMethod(http.MethodPost),
+		WithAuthorization(token),
+		WithRequestBody(&requestBuff),
+		WithJsonContentType(),
+	); err != nil {
+		slog.Error("error making request to contratos service", "error", err, "company", company, "endpoint", "/v1/trabajadores/fazt/import")
+		return errs.BadRequestDirect("no se pudo importar trabajadores")
+	}
+	return nil
 }

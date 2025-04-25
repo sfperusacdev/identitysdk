@@ -31,7 +31,12 @@ func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Period
 	}
 
 	endpoint := "v1/api/listar-periodos"
-	if err := s.makeRequest(ctx, baseURL, endpoint, token, &response); err != nil {
+
+	if err := s.MakeRequest(ctx,
+		baseURL, endpoint,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&response),
+	); err != nil {
 		return nil, err
 	}
 

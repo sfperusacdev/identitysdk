@@ -30,7 +30,12 @@ func (s *ExternalBridgeService) GetPuestosUnidadesSuperiores(ctx context.Context
 		Data    []organigramaResult `json:"data"`
 	}
 	var enpointPath = path.Join("/v1/api/organigrama/cadena_organigrama_superiores/", posicion)
-	if err := s.makeRequest(ctx, baseurl, enpointPath, token, &apiresponse); err != nil {
+
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return apiresponse.Data, nil
@@ -82,7 +87,12 @@ func (s *ExternalBridgeService) GetPuestosUnidadesInferiores(ctx context.Context
 		Data    []organigramaResult `json:"data"`
 	}
 	var enpointPath = path.Join("/v1/api/organigrama/cadena_organigrama_subordinados/", posicion)
-	if err := s.makeRequest(ctx, baseurl, enpointPath, token, &apiresponse); err != nil {
+
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return apiresponse.Data, nil

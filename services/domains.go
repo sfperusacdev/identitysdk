@@ -11,10 +11,11 @@ func (s *ExternalBridgeService) GetDominios(ctx context.Context) ([]string, erro
 		Message string   `json:"message"`
 		Data    []string `json:"data"`
 	}
-	var err = s.makeRequest(ctx,
+	if err := s.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
-		"/v1/get-list-empresas", "-", &apiresponse)
-	if err != nil {
+		"/v1/get-list-empresas",
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return apiresponse.Data, nil
@@ -30,10 +31,11 @@ func (s *ExternalBridgeService) GetEmpresas(ctx context.Context) ([]Empresa, err
 		Message string    `json:"message"`
 		Data    []Empresa `json:"data"`
 	}
-	var err = s.makeRequest(ctx,
+	if err := s.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
-		"/v1/get-list-empresas-full", "-", &apiresponse)
-	if err != nil {
+		"/v1/get-list-empresas-full",
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return apiresponse.Data, nil

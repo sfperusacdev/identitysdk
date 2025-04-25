@@ -96,8 +96,15 @@ func (s *ExternalBridgeService) GetEstadosDocumentoSegunPosicion(
 	}
 	var enpointPath = path.Join("/api/v1/documentos/", documento, "/estados")
 	var values = url.Values{"puesto": []string{strings.Join(posiciones, ",")}}
-	if err := s.makeRequestWithQueryPrams(ctx, baseurl, enpointPath, token, values, &apiresponse); err != nil {
+
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithQueryParams(values),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
+
 	return apiresponse.Data, nil
 }

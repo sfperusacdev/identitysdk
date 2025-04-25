@@ -15,7 +15,7 @@ require (
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/resend/resend-go/v2 v2.17.0
 	github.com/stretchr/testify v1.10.0
-	github.com/user0608/goones v0.7.0
+	github.com/user0608/goones v0.10.0
 	github.com/user0608/ifdevmode v0.0.3
 	go.uber.org/fx v1.23.0
 )
@@ -43,7 +43,6 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.uber.org/dig v1.18.0 // indirect

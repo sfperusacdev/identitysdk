@@ -19,7 +19,12 @@ func (s *ExternalBridgeService) GetPosicionesActivas(ctx context.Context) ([]str
 		Data    []string `json:"data"`
 	}
 	const enpointPath = "/v1/fotocheck/resumen/puestos"
-	if err := s.makeRequest(ctx, baseurl, enpointPath, token, &apiresponse); err != nil {
+
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return apiresponse.Data, nil

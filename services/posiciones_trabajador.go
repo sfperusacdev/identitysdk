@@ -22,7 +22,11 @@ func (s *ExternalBridgeService) GetTrabajadorPosicion(ctx context.Context, codig
 			CargoCodigo string `json:"cargo_codigo"`
 		} `json:"data"`
 	}
-	if err := s.makeRequest(ctx, baseurl, enpointPath, token, &apiresponse); err != nil {
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return "", err
 	}
 	if len(apiresponse.Data) == 0 {

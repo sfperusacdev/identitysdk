@@ -34,14 +34,12 @@ func (s *ExternalBridgeService) GenCertificate(ctx context.Context, cn string) (
 		Data    Certificate `json:"data"`
 	}
 	var token = identitysdk.Token(ctx)
-
-	var err = s.makeRequest(ctx,
+	if err := s.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
 		fmt.Sprintf("/api/v1/certificates/%s", cn),
-		token,
-		&apiresponse,
-	)
-	if err != nil {
+		WithAuthorization(token),
+		WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
 		return nil, err
 	}
 	return &apiresponse.Data, nil
