@@ -19,7 +19,7 @@ func (s *ExternalBridgeService) ReadVariable(ctx context.Context, variableName s
 		return strings.TrimSpace(*cachedValue), nil
 	}
 	var baseUrl = identitysdk.GetIdentityServer()
-	const enpointPath = `/api/v1/companies/all/properties`
+	const enpointPath = `/api/v1/companies/properties`
 	var apiresponse struct {
 		Message string              `json:"message"`
 		Data    []entities.Variable `json:"data"`
