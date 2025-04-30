@@ -18,6 +18,7 @@ var Module = fx.Module("http-server",
 		identitysdk.NewCheckJwtMiddleware,
 		identitysdk.NewSucursalQueryParamMiddleware,
 		identitysdk.NewCheckApiKeyMiddleware,
+		identitysdk.NewCheckJwtPublicClientMiddleware,
 		permissions.NewPermissionMiddlewareBuilder,
 		fx.Annotate(
 			newEchoServer,
@@ -31,6 +32,8 @@ var Module = fx.Module("http-server",
 func newEchoServer(
 	listRoutes []Route,
 	jwtmiddle identitysdk.JwtMiddleware,
+	apiKeymiddle identitysdk.ApiKeyMiddleware,
+	jwtPublicClientMiddle identitysdk.JwtPublicClientMiddleware,
 	sucursalMidl identitysdk.SucursalQueryParamMiddleware,
 	permMiddlBld permissions.PermissionMiddlewareBuilder,
 ) *echo.Echo {
@@ -44,7 +47,7 @@ func newEchoServer(
 	e.Use(middleware.Recover())
 
 	for _, route := range listRoutes {
-		middlewares := buildMiddlewares(route, jwtmiddle, sucursalMidl, permMiddlBld)
+		middlewares := buildMiddlewares(route, jwtmiddle, apiKeymiddle, jwtPublicClientMiddle, sucursalMidl, permMiddlBld)
 		routesMap := map[string]func(string, echo.HandlerFunc, ...echo.MiddlewareFunc) *echo.Route{
 			http.MethodGet:    e.GET,
 			http.MethodPost:   e.POST,
@@ -64,42 +67,54 @@ func newEchoServer(
 
 func buildMiddlewares(
 	route Route,
-	jwtmiddle identitysdk.JwtMiddleware,
-	sucursalMidl identitysdk.SucursalQueryParamMiddleware,
-	permMiddlBld permissions.PermissionMiddlewareBuilder,
+	jwtMiddleware identitysdk.JwtMiddleware,
+	apiKeyMiddleware identitysdk.ApiKeyMiddleware,
+	publicJwtMiddleware identitysdk.JwtPublicClientMiddleware,
+	sucursalMiddleware identitysdk.SucursalQueryParamMiddleware,
+	permissionMiddlewareBuilder permissions.PermissionMiddlewareBuilder,
 ) []echo.MiddlewareFunc {
 	middlewares := make([]echo.MiddlewareFunc, 0, 4)
+	isRouteProtected := false
 
-	var isJwtProtected = false
-	var ensureSessionf = func() {
-		if !isJwtProtected {
-			isJwtProtected = true
-			middlewares = append(
-				[]echo.MiddlewareFunc{echo.MiddlewareFunc(jwtmiddle)},
-				middlewares...,
-			)
-		}
+	if _, ok := route.(publicClientJwtProtect); ok {
+		isRouteProtected = true
+		middlewares = append(middlewares, echo.MiddlewareFunc(publicJwtMiddleware))
+	}
+
+	if _, ok := route.(apikeyProtect); ok {
+		isRouteProtected = true
+		middlewares = append(middlewares, echo.MiddlewareFunc(apiKeyMiddleware))
 	}
 
 	if _, ok := route.(publicRoute); !ok {
-		ensureSessionf()
+		if !isRouteProtected {
+			isRouteProtected = true
+			middlewares = append(middlewares, echo.MiddlewareFunc(jwtMiddleware))
+		}
 	}
 
 	if _, ok := route.(sucursalValidator); ok {
-		ensureSessionf()
-		middlewares = append(middlewares, echo.MiddlewareFunc(sucursalMidl))
+		if !isRouteProtected {
+			isRouteProtected = true
+			middlewares = append(middlewares, echo.MiddlewareFunc(jwtMiddleware))
+		}
+		middlewares = append(middlewares, echo.MiddlewareFunc(sucursalMiddleware))
 	}
 
 	if r, ok := route.(PermissionChecker); ok {
-		if perms := r.CheckPermissions(); len(perms) > 0 {
-			ensureSessionf()
-			middlewares = append(middlewares, permMiddlBld(perms))
+		if permissions := r.CheckPermissions(); len(permissions) > 0 {
+			if !isRouteProtected {
+				isRouteProtected = true
+				middlewares = append(middlewares, echo.MiddlewareFunc(jwtMiddleware))
+			}
+			middlewares = append(middlewares, permissionMiddlewareBuilder(permissions))
 		}
 	}
 
 	if r, ok := route.(MiddlewaresProvider); ok {
 		middlewares = append(middlewares, r.GetMiddlewares()...)
 	}
+
 	return middlewares
 }
 

@@ -33,3 +33,12 @@ type Variable struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
+
+type JwtPublicClientData struct {
+	TokenID string                     `json:"token_id"`
+	Jwt     JwtPublicClientDataSession `json:"jwt"`
+}
+
+type JwtPublicClientDataSession struct {
+	Username string `json:"username"`
+}

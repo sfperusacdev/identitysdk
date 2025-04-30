@@ -21,6 +21,7 @@ func GetIdentityServer() string        { return identityAddress }
 type keyType string
 
 const jwt_claims_key = keyType("jwt-claims-context-key")
+const jwt_claims_username = keyType("jwt_claims_username-key")
 const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
 const domain_key = keyType("domain_key")
@@ -86,8 +87,36 @@ func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 func NewCheckApiKeyMiddleware() ApiKeyMiddleware { return CheckApiKeyMiddleware }
 
+// ------
+type JwtPublicClientMiddleware echo.MiddlewareFunc
+
+func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		token := c.Request().Header.Get("Authorization")
+		if token == "" {
+			token = c.QueryParam("token")
+		}
+		if token == "" {
+			return answer.Err(c, errs.BadRequestDirect("[close] token no encontrado"))
+		}
+		data, err := ValidatePublicClientToken(c.Request().Context(), token)
+		if err != nil {
+			return answer.Err(c, err)
+		}
+		if data == nil {
+			return answer.Err(c, errs.BadRequestDirect("[close] session invalida"))
+		}
+		var newContext = BuildPublicClientContext(c.Request().Context(), token, data)
+		c.SetRequest(c.Request().WithContext(newContext))
+		return next(c)
+	}
+}
+
+func NewCheckJwtPublicClientMiddleware() JwtPublicClientMiddleware { return CheckApiKeyMiddleware }
+
 func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
+	newctx = context.WithValue(newctx, jwt_claims_username, data.Jwt.Username)
 	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
 	newctx = context.WithValue(newctx, jwt_token_key, token)
 	newctx = context.WithValue(newctx, domain_key, data.Jwt.Empresa)
@@ -98,6 +127,12 @@ func BuildApikeyContext(ctx context.Context, apikey string, data *entities.Apike
 	newctx := context.WithValue(ctx, jwt_claims_key, entities.Jwt{Empresa: data.Empresa})
 	newctx = context.WithValue(newctx, jwt_token_key, apikey)
 	newctx = context.WithValue(newctx, domain_key, data.Empresa)
+	return newctx
+}
+
+func BuildPublicClientContext(ctx context.Context, token string, data *entities.JwtPublicClientData) context.Context {
+	newctx := context.WithValue(ctx, jwt_token_key, token)
+	newctx = context.WithValue(newctx, jwt_claims_username, data.Jwt.Username)
 	return newctx
 }
 
@@ -153,12 +188,13 @@ func ReadSession(c context.Context) (entities.Session, bool) {
 }
 
 func Username(c context.Context) string {
-	values, ok := JwtClaims(c)
-	if !ok {
-		return "####username-no-found####"
+	username, ok := c.Value(jwt_claims_username).(string)
+	if ok && username != "" {
+		return username
 	}
-	return values.Username
+	return "####username-no-found####"
 }
+
 func UsuarioReff(c context.Context) string {
 	values, ok := JwtClaims(c)
 	if !ok {

@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/sfperusacdev/identitysdk"
@@ -10,20 +9,19 @@ import (
 	variablecache "github.com/sfperusacdev/identitysdk/internal/variable_cache"
 )
 
-var ErrVariableNotFound = errors.New("variable not found")
-
-func (s *ExternalBridgeService) ReadVariable(ctx context.Context, variableName string) (string, error) {
-	var company, token = s.readCompanyAndToken(ctx)
+func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variableName string) (string, error) {
+	var company = "____global____system____domain____"
+	_, token := s.readCompanyAndToken(ctx)
 	var cachedValue = variablecache.DefaultCache.GetVariable(ctx, company, variableName)
 	if cachedValue != nil {
 		return strings.TrimSpace(*cachedValue), nil
 	}
 	var baseUrl = identitysdk.GetIdentityServer()
-	const enpointPath = `/api/v1/companies/all/properties`
 	var apiresponse struct {
 		Message string              `json:"message"`
 		Data    []entities.Variable `json:"data"`
 	}
+	const enpointPath = `/api/v1/global/all/properties`
 	if err := s.MakeRequest(ctx,
 		baseUrl, enpointPath,
 		WithAuthorization(token),
