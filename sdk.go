@@ -116,7 +116,9 @@ func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func NewCheckJwtPublicClientMiddleware() JwtPublicClientMiddleware { return CheckApiKeyMiddleware }
+func NewCheckJwtPublicClientMiddleware() JwtPublicClientMiddleware {
+	return CheckJwtPublicClientMiddleware
+}
 
 func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
