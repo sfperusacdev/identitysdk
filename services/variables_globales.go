@@ -11,7 +11,6 @@ import (
 
 func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variableName string) (string, error) {
 	var company = "____global____system____domain____"
-	_, token := s.readCompanyAndToken(ctx)
 	var cachedValue = variablecache.DefaultCache.GetVariable(ctx, company, variableName)
 	if cachedValue != nil {
 		return strings.TrimSpace(*cachedValue), nil
@@ -21,10 +20,10 @@ func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variable
 		Message string              `json:"message"`
 		Data    []entities.Variable `json:"data"`
 	}
-	const enpointPath = `/api/v1/global/all/properties`
+	const enpointPath = `/api/v1/public/global/all/properties`
 	if err := s.MakeRequest(ctx,
 		baseUrl, enpointPath,
-		WithAuthorization(token),
+		WithHeader("X-Access-Token", identitysdk.GetAccessToken()),
 		WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", err
