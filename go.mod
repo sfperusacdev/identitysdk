@@ -13,7 +13,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/panjf2000/ants/v2 v2.11.3
-	github.com/resend/resend-go/v2 v2.17.0
+	github.com/resend/resend-go/v2 v2.18.0
 	github.com/stretchr/testify v1.10.0
 	github.com/user0608/goones v0.10.0
 	github.com/user0608/ifdevmode v0.0.3
