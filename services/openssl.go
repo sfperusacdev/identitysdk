@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -39,6 +40,11 @@ type RequestPayload struct {
 }
 
 func (s *ExternalBridgeService) GenCertificate(ctx context.Context, payload RequestPayload) (*Certificate, error) {
+	var domain = identitysdk.Empresa(ctx)
+	return s.GenCertificateWithDomain(ctx, domain, payload)
+}
+
+func (s *ExternalBridgeService) GenCertificateWithDomain(ctx context.Context, domain string, payload RequestPayload) (*Certificate, error) {
 	var apiresponse struct {
 		Message string      `json:"message"`
 		Data    Certificate `json:"data"`
@@ -48,12 +54,11 @@ func (s *ExternalBridgeService) GenCertificate(ctx context.Context, payload Requ
 		slog.Error("Error encoding JSON payload", "error", err)
 		return nil, err
 	}
-	var token = identitysdk.Token(ctx)
 	if err := s.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
-		"/api/v1/certificates/gen",
+		fmt.Sprintf("/api/v1/certificates/gen/%s", domain),
 		WithMethod(http.MethodPost),
-		WithAuthorization(token),
+		WithHeader("X-Access-Token", identitysdk.GetAccessToken()),
 		WithRequestBody(&buf),
 		WithJsonContentType(),
 		WithUnmarshalResponseInto(&apiresponse),
