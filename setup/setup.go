@@ -176,6 +176,12 @@ func (s *Service) Run(opts ...fx.Option) error {
 		opts = append(
 			opts,
 			fx.Provide(
+				func() ConfigPath {
+					if s.configPath == nil {
+						return ""
+					}
+					return *s.configPath
+				},
 				func() GeneralServiceConfigProvider { return gsc },
 				func() connection.StorageManager { return connectionManager },
 				func(c GeneralServiceConfigProvider) httpapi.ServeURLString {
