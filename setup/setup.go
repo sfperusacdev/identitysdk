@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/pressly/goose/v3"
+	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	"github.com/spf13/cobra"
 	connection "github.com/user0608/pg-connection"
@@ -147,6 +148,17 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 		},
 	}
 }
+func (s *Service) setupIdentity(c GeneralServiceConfigProvider) error {
+	identitysdk.SetIdentityServer(c.Identity())
+	identitysdk.SetAccessToken(c.IdentityAccessToken())
+
+	if err := identitysdk.IdentityServerCheckHealth(); err != nil {
+		slog.Error("indentity health check", "error", err)
+		return err
+	}
+	slog.Info("Identity server OK!!")
+	return nil
+}
 
 func (s *Service) Run(opts ...fx.Option) error {
 	s.Command.Run = func(cmd *cobra.Command, args []string) {
@@ -171,7 +183,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 				},
 			),
 			httpapi.Module,
-			fx.Invoke(httpapi.StartWebServer),
+			fx.Invoke(s.setupIdentity, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)
 		app.Run()
