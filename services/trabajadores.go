@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -118,4 +119,25 @@ func (s *ExternalBridgeService) FastImportTrabajadores(ctx context.Context, trab
 		return errs.BadRequestDirect("no se pudo importar trabajadores")
 	}
 	return nil
+}
+
+// public user session requiered
+func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (any, error) {
+	var token = identitysdk.Token(ctx)
+	baseurl, err := identitysdk.GetContratosServiceURL(ctx, empresa)
+	if err != nil {
+		slog.Error("error trying to retrieve `contratos` service url", "error", err)
+		return nil, err
+	}
+	var mapa = map[string]any{}
+	var enpointPath = fmt.Sprintf("/v1/public/resumen/trabajador/info/%s", empresa)
+	if err := s.MakeRequest(ctx,
+		baseurl, enpointPath,
+		WithAuthorization(token),
+		WithJsonContentType(),
+		WithUnmarshalResponseInto(&mapa),
+	); err != nil {
+		return nil, err
+	}
+	return mapa, nil
 }
