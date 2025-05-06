@@ -173,6 +173,31 @@ func (s *Service) Run(opts ...fx.Option) error {
 			os.Exit(1)
 		}
 
+		automigration, err := cmd.Flags().GetBool("auto")
+		if err != nil {
+			slog.Error("Failed to read 'auto' flag", "error", err)
+			os.Exit(1)
+		}
+		if automigration {
+			ctx := context.Background()
+			goose.SetBaseFS(s.migrationsDir)
+
+			gormConn := connectionManager.Conn(ctx)
+			conn, err := gormConn.DB()
+			if err != nil {
+				slog.Error("Failed to retrieve database connection", "error", err)
+				os.Exit(1)
+			}
+
+			slog.Info("Running database migrations...")
+			err = goose.RunWithOptionsContext(ctx, "up", conn, "migrations", []string{})
+			if err != nil {
+				slog.Error("Error running migrations", "error", err)
+				os.Exit(1)
+			}
+			slog.Info("Migrations completed successfully")
+		}
+
 		opts = append(
 			opts,
 			fx.Provide(
