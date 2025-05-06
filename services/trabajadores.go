@@ -122,22 +122,29 @@ func (s *ExternalBridgeService) FastImportTrabajadores(ctx context.Context, trab
 }
 
 // public user session requiered
-func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (any, error) {
+func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (*entities.TrabajadorDto, error) {
 	var token = identitysdk.Token(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, empresa)
 	if err != nil {
 		slog.Error("error trying to retrieve `contratos` service url", "error", err)
 		return nil, err
 	}
-	var mapa = map[string]any{}
+	// var mapa = map[string]any{}
+	var apiresponse struct {
+		Message string                   `json:"message"`
+		Data    []entities.TrabajadorDto `json:"data"`
+	}
 	var enpointPath = fmt.Sprintf("/v1/public/resumen/trabajador/info/%s", empresa)
 	if err := s.MakeRequest(ctx,
 		baseurl, enpointPath,
 		WithAuthorization(token),
 		WithJsonContentType(),
-		WithUnmarshalResponseInto(&mapa),
+		WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}
-	return mapa, nil
+	if len(apiresponse.Data) == 0 {
+		return nil, errs.BadRequestDirect("No se encontraron datos para el usuario o trabajador especificado.")
+	}
+	return &apiresponse.Data[0], nil
 }
