@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/pressly/goose/v3"
@@ -117,6 +119,51 @@ func NewService(
 	)
 	if options.migrationsDir != nil {
 		service.Command.AddCommand(
+			&cobra.Command{
+				Use:   "database-script",
+				Short: "Generates a complete SQL script to create the database schema",
+				Run: func(cmd *cobra.Command, args []string) {
+					const migrration_dir = "migrations"
+
+					migrationsDir, err := fs.ReadDir(options.migrationsDir, "migrations")
+					if err != nil {
+						slog.Error("unable to read migrations directory", "error", err)
+						os.Exit(1)
+					}
+					var rgx = regexp.MustCompile(`(?s)-- \+goose Up.*-- \+goose Down`)
+					var output strings.Builder
+					for _, entry := range migrationsDir {
+						if path.Ext(entry.Name()) != ".sql" {
+							continue
+						}
+						fileContent, err := fs.ReadFile(
+							options.migrationsDir,
+							path.Join(migrration_dir, entry.Name()),
+						)
+						if err != nil {
+							slog.Error("unable to read migrations file", "file", entry.Name(), "error", err)
+							os.Exit(1)
+						}
+						mathed := rgx.Find(fileContent)
+						if mathed == nil {
+							continue
+						}
+						output.WriteString(fmt.Sprintf("--%s\n", entry.Name()))
+						skipBytes := []byte("--")
+						var scanner = bufio.NewScanner(bytes.NewBuffer(mathed))
+						for scanner.Scan() {
+							line := scanner.Bytes()
+							if bytes.HasPrefix(line, skipBytes) ||
+								bytes.TrimSpace(line) == nil {
+								continue
+							}
+							output.WriteString(string(line))
+							output.WriteByte('\n')
+						}
+					}
+					fmt.Println(output.String())
+				},
+			},
 			service.migrationCommand("upgrade", "Upgrade the database schema to the latest version", "up"),
 			service.migrationCommand("downgrade", "Downgrade the database schema to a previous version", "down"),
 			service.migrationCommand("status", "Show database version status", "status"),
