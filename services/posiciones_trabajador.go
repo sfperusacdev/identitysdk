@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 func (s *ExternalBridgeService) GetTrabajadorPosicion(ctx context.Context, codigo string) (string, error) {
@@ -22,10 +23,10 @@ func (s *ExternalBridgeService) GetTrabajadorPosicion(ctx context.Context, codig
 			CargoCodigo string `json:"cargo_codigo"`
 		} `json:"data"`
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", err
 	}

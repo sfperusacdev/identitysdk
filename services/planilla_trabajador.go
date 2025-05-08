@@ -7,6 +7,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 type PlanillaDto struct {
@@ -27,10 +28,10 @@ func (s *ExternalBridgeService) GetPlanillas(ctx context.Context) ([]PlanillaDto
 		Data    []PlanillaDto `json:"data"`
 	}
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, "/v1/api/tables/empresa/planilla",
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}
@@ -51,10 +52,10 @@ func (s *ExternalBridgeService) GetPlanillaTrabajador(ctx context.Context, traba
 
 	var enpointPath = fmt.Sprintf("/v1/trabajadores/planilla/%s/%s", company, identitysdk.RemovePrefix(trabajadorCodigo))
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}

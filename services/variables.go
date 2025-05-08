@@ -9,6 +9,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
 	variablecache "github.com/sfperusacdev/identitysdk/internal/variable_cache"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 var ErrVariableNotFound = errors.New("variable not found")
@@ -30,10 +31,10 @@ func (s *ExternalBridgeService) ReadCompanyVariable(ctx context.Context, company
 		Message string              `json:"message"`
 		Data    []entities.Variable `json:"data"`
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseUrl, enpointPath,
-		WithHeader("X-Access-Token", identitysdk.GetAccessToken()),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", err
 	}

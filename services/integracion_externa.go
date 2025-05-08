@@ -9,6 +9,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	integracioncache "github.com/sfperusacdev/identitysdk/internal/integracion_cache"
+	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/user0608/ifdevmode"
 )
 
@@ -33,9 +34,9 @@ func (s *ExternalBridgeService) IntegracionExternaCodigo(ctx context.Context, co
 		Message string                            `json:"message"`
 		Data    integracioncache.IntegracionState `json:"data"`
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseUrl, enpointPath,
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", err
 	}
@@ -77,9 +78,9 @@ func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, compa
 		Message string                            `json:"message"`
 		Data    integracioncache.IntegracionState `json:"data"`
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseUrl, enpointPath,
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", false, err
 	}

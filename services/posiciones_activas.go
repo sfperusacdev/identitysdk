@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 func (s *ExternalBridgeService) GetPosicionesActivas(ctx context.Context) ([]string, error) {
@@ -20,10 +21,10 @@ func (s *ExternalBridgeService) GetPosicionesActivas(ctx context.Context) ([]str
 	}
 	const enpointPath = "/v1/fotocheck/resumen/puestos"
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}

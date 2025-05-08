@@ -1,4 +1,4 @@
-package services
+package xreq_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 func TestExternalBridgeService_MakeRequest_AllOptions(t *testing.T) {
@@ -60,7 +62,6 @@ func TestExternalBridgeService_MakeRequest_AllOptions(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := &ExternalBridgeService{}
 	var response struct {
 		Data string `json:"data"`
 	}
@@ -68,16 +69,16 @@ func TestExternalBridgeService_MakeRequest_AllOptions(t *testing.T) {
 	query := url.Values{}
 	query.Set(expectedQueryKey, expectedQueryValue)
 
-	err := service.MakeRequest(
+	err := xreq.MakeRequest(
 		context.Background(),
 		server.URL,
 		"/",
-		WithMethod(expectedMethod),
-		WithAuthorization(expectedAuth),
-		WithHeader(expectedHeaderKey, expectedHeaderValue),
-		WithQueryParams(query),
-		WithRequestBody(strings.NewReader(expectedBody)),
-		WithUnmarshalResponseInto(&response),
+		xreq.WithMethod(expectedMethod),
+		xreq.WithAuthorization(expectedAuth),
+		xreq.WithHeader(expectedHeaderKey, expectedHeaderValue),
+		xreq.WithQueryParams(query),
+		xreq.WithRequestBody(strings.NewReader(expectedBody)),
+		xreq.WithUnmarshalResponseInto(&response),
 	)
 
 	if err != nil {
@@ -186,18 +187,16 @@ func TestExternalBridgeService_MakeRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := &ExternalBridgeService{}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var actualResponse Response
 
-			err := service.MakeRequest(
+			err := xreq.MakeRequest(
 				context.Background(),
 				server.URL,
 				tt.path,
-				WithMethod(tt.method),
-				WithUnmarshalResponseInto(&actualResponse),
+				xreq.WithMethod(tt.method),
+				xreq.WithUnmarshalResponseInto(&actualResponse),
 			)
 
 			if tt.expectError && err == nil {
@@ -231,18 +230,17 @@ func TestExternalBridgeService_MakeRequest_WithCustomHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := &ExternalBridgeService{}
 	var response struct {
 		Data string `json:"data"`
 	}
 
-	err := service.MakeRequest(
+	err := xreq.MakeRequest(
 		context.Background(),
 		server.URL,
 		"/",
-		WithMethod(http.MethodGet),
-		WithUnmarshalResponseInto(&response),
-		WithHeader(expectedHeaderKey, expectedHeaderValue),
+		xreq.WithMethod(http.MethodGet),
+		xreq.WithUnmarshalResponseInto(&response),
+		xreq.WithHeader(expectedHeaderKey, expectedHeaderValue),
 	)
 
 	if err != nil {
@@ -276,18 +274,17 @@ func TestExternalBridgeService_MakeRequest_WithRequestBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := &ExternalBridgeService{}
 	var response struct {
 		Data string `json:"data"`
 	}
 
-	err := service.MakeRequest(
+	err := xreq.MakeRequest(
 		context.Background(),
 		server.URL,
 		"/",
-		WithMethod(http.MethodPost),
-		WithRequestBody(strings.NewReader(expectedBody)),
-		WithUnmarshalResponseInto(&response),
+		xreq.WithMethod(http.MethodPost),
+		xreq.WithRequestBody(strings.NewReader(expectedBody)),
+		xreq.WithUnmarshalResponseInto(&response),
 	)
 
 	if err != nil {
@@ -326,8 +323,6 @@ func TestExternalBridgeService_MakeRequest_ErrorResponses(t *testing.T) {
 		},
 	}
 
-	service := &ExternalBridgeService{}
-
 	for _, tt := range tests {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
@@ -340,11 +335,11 @@ func TestExternalBridgeService_MakeRequest_ErrorResponses(t *testing.T) {
 			}))
 			defer server.Close()
 
-			err := service.MakeRequest(
+			err := xreq.MakeRequest(
 				context.Background(),
 				server.URL,
 				"/error",
-				WithMethod(http.MethodGet),
+				xreq.WithMethod(http.MethodGet),
 			)
 
 			if err == nil {

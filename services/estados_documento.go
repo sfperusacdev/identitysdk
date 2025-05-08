@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 type ListDocumentoEstadoDto []struct {
@@ -97,11 +98,11 @@ func (s *ExternalBridgeService) GetEstadosDocumentoSegunPosicion(
 	var enpointPath = path.Join("/api/v1/documentos/", documento, "/estados")
 	var values = url.Values{"puesto": []string{strings.Join(posiciones, ",")}}
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithQueryParams(values),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithQueryParams(values),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}

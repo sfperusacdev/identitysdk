@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 type organigramaResult struct {
@@ -31,10 +32,10 @@ func (s *ExternalBridgeService) GetPuestosUnidadesSuperiores(ctx context.Context
 	}
 	var enpointPath = path.Join("/v1/api/organigrama/cadena_organigrama_superiores/", posicion)
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}
@@ -88,10 +89,10 @@ func (s *ExternalBridgeService) GetPuestosUnidadesInferiores(ctx context.Context
 	}
 	var enpointPath = path.Join("/v1/api/organigrama/cadena_organigrama_subordinados/", posicion)
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}

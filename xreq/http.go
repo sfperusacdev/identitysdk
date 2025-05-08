@@ -1,4 +1,4 @@
-package services
+package xreq
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type RequestOptions struct {
 	QueryParams  url.Values
 	Headers      http.Header
 	RequestBody  io.Reader
-	ResponseBody any
+	ResponseBody any // ResponseBody represents the full response body, used for all content types.
 }
 
 type RequestOption func(*RequestOptions)
@@ -30,15 +30,21 @@ func WithAuthorization(token string) RequestOption {
 	return WithHeader("Authorization", token)
 }
 
+func WithAccessToken(accessToken string) RequestOption {
+	return WithHeader("X-Access-Token", accessToken)
+}
+
 func WithQueryParams(params url.Values) RequestOption {
 	return func(o *RequestOptions) {
 		o.QueryParams = params
 	}
 }
 
-func WithUnmarshalResponseInto(body any) RequestOption {
+// WithUnmarshalResponseInto sets the full response body to be unmarshaled into the provided variable.
+// Use this option when you need to capture the entire response, regardless of its structure.
+func WithUnmarshalResponseInto(a any) RequestOption {
 	return func(o *RequestOptions) {
-		o.ResponseBody = body
+		o.ResponseBody = a
 	}
 }
 
@@ -76,7 +82,8 @@ func WithRequestBody(body io.Reader) RequestOption {
 		o.RequestBody = body
 	}
 }
-func (*ExternalBridgeService) MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...RequestOption) error {
+
+func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...RequestOption) error {
 	options := &RequestOptions{
 		Method: http.MethodGet,
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Periodo, error) {
@@ -32,10 +33,10 @@ func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Period
 
 	endpoint := "v1/api/listar-periodos"
 
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseURL, endpoint,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&response),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&response),
 	); err != nil {
 		return nil, err
 	}

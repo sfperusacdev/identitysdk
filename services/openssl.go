@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 type Certificate struct {
@@ -54,14 +55,14 @@ func (s *ExternalBridgeService) GenCertificateWithDomain(ctx context.Context, do
 		slog.Error("Error encoding JSON payload", "error", err)
 		return nil, err
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
 		fmt.Sprintf("/api/v1/certificates/gen/%s", domain),
-		WithMethod(http.MethodPost),
-		WithHeader("X-Access-Token", identitysdk.GetAccessToken()),
-		WithRequestBody(&buf),
-		WithJsonContentType(),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithMethod(http.MethodPost),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+		xreq.WithRequestBody(&buf),
+		xreq.WithJsonContentType(),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}

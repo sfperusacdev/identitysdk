@@ -7,6 +7,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
 	variablecache "github.com/sfperusacdev/identitysdk/internal/variable_cache"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variableName string) (string, error) {
@@ -21,10 +22,10 @@ func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variable
 		Data    []entities.Variable `json:"data"`
 	}
 	const enpointPath = `/api/v1/public/global/all/properties`
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseUrl, enpointPath,
-		WithHeader("X-Access-Token", identitysdk.GetAccessToken()),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return "", err
 	}

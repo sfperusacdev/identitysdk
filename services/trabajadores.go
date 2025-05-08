@@ -11,6 +11,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/user0608/goones/errs"
 )
 
@@ -46,10 +47,10 @@ func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities
 		} `json:"data"`
 	}
 	var enpointPath = "/v1/fotocheck/trabajadores/json"
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}
@@ -107,13 +108,13 @@ func (s *ExternalBridgeService) FastImportTrabajadores(ctx context.Context, trab
 		slog.Error("error retrieving contratos service URL", "error", err, "company", company)
 		return errs.BadRequestDirect("no se pudo obtener la URL del servicio de contratos")
 	}
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl,
 		"/v1/trabajadores/fazt/import",
-		WithMethod(http.MethodPost),
-		WithAuthorization(token),
-		WithRequestBody(&requestBuff),
-		WithJsonContentType(),
+		xreq.WithMethod(http.MethodPost),
+		xreq.WithAuthorization(token),
+		xreq.WithRequestBody(&requestBuff),
+		xreq.WithJsonContentType(),
 	); err != nil {
 		slog.Error("error making request to contratos service", "error", err, "company", company, "endpoint", "/v1/trabajadores/fazt/import")
 		return errs.BadRequestDirect("no se pudo importar trabajadores")
@@ -135,11 +136,11 @@ func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (
 		Data    []entities.TrabajadorDto `json:"data"`
 	}
 	var enpointPath = fmt.Sprintf("/v1/public/resumen/trabajador/info/%s", empresa)
-	if err := s.MakeRequest(ctx,
+	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
-		WithAuthorization(token),
-		WithJsonContentType(),
-		WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithAuthorization(token),
+		xreq.WithJsonContentType(),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
 		return nil, err
 	}
