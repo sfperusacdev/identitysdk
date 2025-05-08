@@ -19,6 +19,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/httpapi"
+	"github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
 	connection "github.com/user0608/pg-connection"
@@ -351,6 +352,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 					return httpapi.ServeURLString(c.ListenAddress())
 				},
 			),
+			fx.Provide(services.NewExternalBridgeService),
 			httpapi.Module,
 			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
 		)
