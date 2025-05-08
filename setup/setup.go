@@ -1,41 +1,94 @@
 package setup
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
-	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/httpapi"
+	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
 	connection "github.com/user0608/pg-connection"
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v2"
 )
 
-type Service struct {
-	configPath     *ConfigPath
-	migrationsDir  embed.FS
-	version        string
-	Command        *cobra.Command
+type ServiceDetails struct {
+	Name        string
+	Description string
+}
+
+type ServiceOptions struct {
 	configProvider ConfigsProviderFunc
+	details        ServiceDetails
+	migrationsDir  fs.FS
+}
+
+type ServiceOption func(*ServiceOptions)
+
+func WithMigrationSource(sf fs.FS) ServiceOption {
+	return func(o *ServiceOptions) {
+		if sf == nil {
+			slog.Warn("Migrations filesystem is nil, operation skipped")
+			return
+		}
+		o.migrationsDir = sf
+	}
+}
+
+func WithConfigProvider(provider ConfigsProviderFunc) ServiceOption {
+	return func(o *ServiceOptions) {
+		if provider == nil {
+			slog.Warn("Service config provider is nil, operation skipped")
+			return
+		}
+		o.configProvider = provider
+	}
+}
+
+func WithDetails(serviceID, description string) ServiceOption {
+	return func(o *ServiceOptions) {
+		o.details = ServiceDetails{
+			Name:        strings.TrimSpace(serviceID),
+			Description: strings.TrimSpace(description),
+		}
+	}
+}
+
+type Service struct {
+	configPath *ConfigPath
+	Command    *cobra.Command
+	options    ServiceOptions
+	version    string
 }
 
 func NewService(
 	version string,
-	migrationsDir embed.FS,
+	opts ...ServiceOption,
 ) *Service {
-	service := &Service{
-		version:        version,
-		migrationsDir:  migrationsDir,
+	options := &ServiceOptions{
 		configProvider: DefaultConfigsProviderFunc,
 	}
+	for _, apply := range opts {
+		apply(options)
+	}
+
+	service := &Service{
+		version: version,
+		options: *options,
+	}
+
 	service.Command = &cobra.Command{
 		Use:  path.Base(os.Args[0]),
 		Args: service.prepareConfigPath,
@@ -61,14 +114,16 @@ func NewService(
 				fmt.Println(string(data))
 			},
 		},
-		service.migrationCommand("upgrade", "Upgrade the database schema to the latest version", "up"),
-		service.migrationCommand("downgrade", "Downgrade the database schema to a previous version", "down"),
-		service.migrationCommand("status", "Show database version status", "status"),
 	)
+	if options.migrationsDir != nil {
+		service.Command.AddCommand(
+			service.migrationCommand("upgrade", "Upgrade the database schema to the latest version", "up"),
+			service.migrationCommand("downgrade", "Downgrade the database schema to a previous version", "down"),
+			service.migrationCommand("status", "Show database version status", "status"),
+		)
+	}
 	return service
 }
-
-func (s *Service) SetConfigsProviderFunc(provider ConfigsProviderFunc) { s.configProvider = provider }
 
 func (s *Service) prepareConfigPath(cmd *cobra.Command, args []string) error {
 	configPath := ConfigPath(cmd.Flag("config").Value.String())
@@ -85,7 +140,7 @@ func (s *Service) configs() (GeneralServiceConfigProvider, DatabaseConfigProvide
 		return nil, nil, errors.New("config path is nil")
 	}
 
-	ceneralConfig, dbconfig, err := s.configProvider(*s.configPath)
+	ceneralConfig, dbconfig, err := s.options.configProvider(*s.configPath)
 	if err != nil {
 		slog.Error("Error fetching database configuration", "error", err)
 		return nil, nil, err
@@ -133,13 +188,16 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 		Short: shortDesc,
 		Args:  s.prepareConfigPath,
 		Run: func(cmd *cobra.Command, args []string) {
-
+			if s.options.migrationsDir == nil {
+				slog.Warn("Migrations directory not set, skipping migration initialization")
+				return
+			}
 			db, err := s.getDatabaseConnection()
 			if err != nil {
 				slog.Error("Failed to establish database connection", "error", err)
 				os.Exit(1)
 			}
-			goose.SetBaseFS(s.migrationsDir)
+			goose.SetBaseFS(s.options.migrationsDir)
 			err = goose.RunWithOptionsContext(context.Background(), migrationType, db, "migrations", []string{})
 			if err != nil {
 				slog.Error(fmt.Sprintf("Database %s failed", migrationType), "error", err)
@@ -148,6 +206,7 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 		},
 	}
 }
+
 func (s *Service) setupIdentity(c GeneralServiceConfigProvider) error {
 	identitysdk.SetIdentityServer(c.Identity())
 	identitysdk.SetAccessToken(c.IdentityAccessToken())
@@ -158,6 +217,38 @@ func (s *Service) setupIdentity(c GeneralServiceConfigProvider) error {
 	}
 	slog.Info("Identity server OK!!")
 	return nil
+}
+
+func (s *Service) publishServiceDetails(c GeneralServiceConfigProvider) {
+	var accessToken = c.IdentityAccessToken()
+	if s.options.details.Name == "" {
+		return
+	}
+	if accessToken == "" {
+		slog.Warn("Failed to publish service details: missing access token")
+		return
+	}
+
+	var buff bytes.Buffer
+	if err := json.NewEncoder(&buff).Encode(map[string]string{
+		"code":        s.options.details.Name,
+		"description": s.options.details.Description,
+	}); err != nil {
+		slog.Warn("Failed to encode service details", "error", err)
+		return
+	}
+
+	if err := xreq.MakeRequest(
+		context.Background(),
+		c.Identity(),
+		"/api/v1/internal/system/resources",
+		xreq.WithMethod(http.MethodPost),
+		xreq.WithRequestBody(&buff),
+		xreq.WithJsonContentType(),
+		xreq.WithAccessToken(accessToken),
+	); err != nil {
+		slog.Warn("Failed to publish service details", "error", err)
+	}
 }
 
 func (s *Service) Run(opts ...fx.Option) error {
@@ -178,9 +269,9 @@ func (s *Service) Run(opts ...fx.Option) error {
 			slog.Error("Failed to read 'auto' flag", "error", err)
 			os.Exit(1)
 		}
-		if automigration {
+		if automigration && s.options.migrationsDir != nil {
 			ctx := context.Background()
-			goose.SetBaseFS(s.migrationsDir)
+			goose.SetBaseFS(s.options.migrationsDir)
 
 			gormConn := connectionManager.Conn(ctx)
 			conn, err := gormConn.DB()
@@ -214,7 +305,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 				},
 			),
 			httpapi.Module,
-			fx.Invoke(s.setupIdentity, httpapi.StartWebServer),
+			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)
 		app.Run()
