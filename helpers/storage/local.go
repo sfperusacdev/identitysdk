@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -74,6 +75,16 @@ func (l *LocalFileStore) Save(ctx context.Context, filePath string, data []byte)
 	return err
 }
 
+func (l *LocalFileStore) SaveR(ctx context.Context, filePath string, r io.Reader) error {
+	fileBytes, err := io.ReadAll(r)
+	if err != nil {
+		slog.Error("Error reading file data from the provided reader",
+			"error", err,
+		)
+	}
+	return l.Save(ctx, filePath, fileBytes)
+}
+
 func (l *LocalFileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(files))
@@ -98,6 +109,22 @@ func (l *LocalFileStore) SaveBatch(ctx context.Context, files map[string][]byte)
 		return <-errCh
 	}
 	return nil
+}
+
+func (l *LocalFileStore) SaveRBatch(ctx context.Context, files map[string]io.Reader) error {
+	filesBytes := make(map[string][]byte, len(files))
+	for name, file := range files {
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			slog.Error("Error reading file data for batch save",
+				"file", name,
+				"error", err,
+			)
+			return err
+		}
+		filesBytes[name] = fileBytes
+	}
+	return l.SaveBatch(ctx, filesBytes)
 }
 
 func (l *LocalFileStore) Delete(ctx context.Context, filepath string) error {

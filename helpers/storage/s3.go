@@ -101,12 +101,12 @@ func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error)
 	return buf.Bytes(), nil
 }
 
-func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error {
+func (s *S3FileStore) SaveR(ctx context.Context, path string, r io.Reader) error {
 	fullPath := s.getFullPath(path)
 	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
-		Body:   bytes.NewReader(data),
+		Body:   r,
 	})
 	if err != nil {
 		slog.Error("Failed to save object to S3",
@@ -117,7 +117,12 @@ func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error 
 	}
 	return err
 }
-func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
+
+func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error {
+	return s.SaveR(ctx, path, bytes.NewReader(data))
+}
+
+func (s *S3FileStore) SaveRBatch(ctx context.Context, files map[string]io.Reader) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(files))
 
@@ -134,7 +139,7 @@ func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) er
 		wg.Add(1)
 		err := pool.Submit(func() {
 			defer wg.Done()
-			if err := s.Save(ctx, p, d); err != nil {
+			if err := s.SaveR(ctx, p, d); err != nil {
 				errCh <- err
 			}
 		})
@@ -151,6 +156,14 @@ func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) er
 		return <-errCh
 	}
 	return nil
+}
+
+func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
+	var readers = make(map[string]io.Reader, len(files))
+	for key, value := range files {
+		readers[key] = bytes.NewBuffer(value)
+	}
+	return s.SaveRBatch(ctx, readers)
 }
 
 func (s *S3FileStore) Delete(ctx context.Context, filepath string) error {
