@@ -12,11 +12,11 @@ type TaskRunner struct {
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
 	isRunning atomic.Bool
-	task      func()
+	task      func(context.Context)
 	interval  time.Duration
 }
 
-func NewTaskRunner(task func(), interval time.Duration) *TaskRunner {
+func NewTaskRunner(task func(context.Context), interval time.Duration) *TaskRunner {
 	return &TaskRunner{
 		task:     task,
 		interval: interval,
@@ -42,7 +42,7 @@ func (tr *TaskRunner) Start() {
 			case <-tr.ctx.Done():
 				return
 			default:
-				tr.task()
+				tr.task(tr.ctx)
 				time.Sleep(tr.interval)
 			}
 		}

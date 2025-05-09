@@ -1,6 +1,7 @@
 package taskrunner_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,7 +13,7 @@ import (
 
 func TestConcurrentStartStop(t *testing.T) {
 
-	task := func() {
+	task := func(cxt context.Context) {
 		fmt.Println("Executing task at", time.Now().Format(time.RFC3339))
 	}
 
@@ -44,7 +45,7 @@ func TestTaskExecution(t *testing.T) {
 	interval := 500 * time.Millisecond
 	totalWaitTime := time.Duration(expectedExecutions) * interval
 
-	task := func() {
+	task := func(cxt context.Context) {
 		atomic.AddInt64(&taskCount, 1)
 	}
 
