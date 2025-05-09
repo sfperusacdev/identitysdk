@@ -19,6 +19,7 @@ var Module = fx.Module("http-server",
 		identitysdk.NewSucursalQueryParamMiddleware,
 		identitysdk.NewCheckApiKeyMiddleware,
 		identitysdk.NewCheckJwtPublicClientMiddleware,
+		identitysdk.NewCheckAccessKeyMiddleware,
 		permissions.NewPermissionMiddlewareBuilder,
 		fx.Annotate(
 			newEchoServer,
@@ -34,6 +35,8 @@ func newEchoServer(
 	jwtmiddle identitysdk.JwtMiddleware,
 	apiKeymiddle identitysdk.ApiKeyMiddleware,
 	jwtPublicClientMiddle identitysdk.JwtPublicClientMiddleware,
+	accessKeyMiddleware identitysdk.AccessKeyMiddleware,
+
 	sucursalMidl identitysdk.SucursalQueryParamMiddleware,
 	permMiddlBld permissions.PermissionMiddlewareBuilder,
 ) *echo.Echo {
@@ -47,7 +50,15 @@ func newEchoServer(
 	e.Use(middleware.Recover())
 
 	for _, route := range listRoutes {
-		middlewares := buildMiddlewares(route, jwtmiddle, apiKeymiddle, jwtPublicClientMiddle, sucursalMidl, permMiddlBld)
+		middlewares := buildMiddlewares(
+			route,
+			jwtmiddle,
+			apiKeymiddle,
+			jwtPublicClientMiddle,
+			accessKeyMiddleware,
+			sucursalMidl,
+			permMiddlBld,
+		)
 		routesMap := map[string]func(string, echo.HandlerFunc, ...echo.MiddlewareFunc) *echo.Route{
 			http.MethodGet:    e.GET,
 			http.MethodPost:   e.POST,
@@ -70,11 +81,18 @@ func buildMiddlewares(
 	jwtMiddleware identitysdk.JwtMiddleware,
 	apiKeyMiddleware identitysdk.ApiKeyMiddleware,
 	publicJwtMiddleware identitysdk.JwtPublicClientMiddleware,
+	accessKeyMiddleware identitysdk.AccessKeyMiddleware,
+
 	sucursalMiddleware identitysdk.SucursalQueryParamMiddleware,
 	permissionMiddlewareBuilder permissions.PermissionMiddlewareBuilder,
 ) []echo.MiddlewareFunc {
 	middlewares := make([]echo.MiddlewareFunc, 0, 4)
 	isRouteProtected := false
+
+	if _, ok := route.(accessKeyProtect); ok {
+		isRouteProtected = true
+		middlewares = append(middlewares, echo.MiddlewareFunc(accessKeyMiddleware))
+	}
 
 	if _, ok := route.(publicClientJwtProtect); ok {
 		isRouteProtected = true

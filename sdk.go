@@ -80,7 +80,7 @@ func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 func NewCheckApiKeyMiddleware() ApiKeyMiddleware { return CheckApiKeyMiddleware }
 
-// ------
+// region ClientMiddleware
 type JwtPublicClientMiddleware echo.MiddlewareFunc
 
 func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -107,6 +107,26 @@ func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 func NewCheckJwtPublicClientMiddleware() JwtPublicClientMiddleware {
 	return CheckJwtPublicClientMiddleware
+}
+
+// region AccessKeyMiddleware
+type AccessKeyMiddleware echo.MiddlewareFunc
+
+func CheckAccessKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		accesskey := c.Request().Header.Get("X-Access-Token")
+		if accesskey == "" {
+			return answer.Err(c, errs.BadRequestDirect("access-token no encontrado"))
+		}
+		if err := ValidateAccessKey(c.Request().Context(), accesskey); err != nil {
+			return answer.Err(c, err)
+		}
+		return next(c)
+	}
+}
+
+func NewCheckAccessKeyMiddleware() AccessKeyMiddleware {
+	return CheckAccessKeyMiddleware
 }
 
 func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
