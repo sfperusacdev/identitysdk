@@ -43,7 +43,12 @@ func (tr *TaskRunner) Start() {
 				return
 			default:
 				tr.task(tr.ctx)
-				time.Sleep(tr.interval)
+			}
+
+			select {
+			case <-tr.ctx.Done():
+				return
+			case <-time.After(tr.interval):
 			}
 		}
 	}()

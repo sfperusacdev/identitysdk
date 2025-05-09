@@ -69,3 +69,49 @@ func TestTaskExecution(t *testing.T) {
 
 	t.Logf("Task executed %d times in %v", executions, elapsedTime)
 }
+
+func TestTaskStopsImmediately(t *testing.T) {
+	var taskCount int64
+	interval := 5 * time.Second
+
+	task := func(cxt context.Context) {
+		atomic.AddInt64(&taskCount, 1)
+	}
+
+	runner := taskrunner.NewTaskRunner(task, interval)
+
+	runner.Start()
+	time.Sleep(100 * time.Millisecond)
+	runner.Stop()
+
+	executionsAfterStop := atomic.LoadInt64(&taskCount)
+
+	time.Sleep(2 * time.Second)
+
+	executionsFinal := atomic.LoadInt64(&taskCount)
+
+	if executionsAfterStop != executionsFinal {
+		t.Fatalf("Expected no additional executions after stop, but got %d -> %d", executionsAfterStop, executionsFinal)
+	}
+
+	t.Logf("Task stopped correctly after %d executions", executionsAfterStop)
+}
+
+func TestTaskStopsImmediately_Time(t *testing.T) {
+	task := func(ctx context.Context) {}
+
+	runner := taskrunner.NewTaskRunner(task, time.Second)
+
+	runner.Start()
+	time.Sleep(10 * time.Millisecond)
+
+	startStop := time.Now()
+	runner.Stop()
+
+	diff := time.Since(startStop)
+
+	maxDelta := 10 * time.Millisecond
+	if diff > maxDelta {
+		t.Fatalf("Expected Stop to complete within %v, but took %v", maxDelta, diff)
+	}
+}
