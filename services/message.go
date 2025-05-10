@@ -1,42 +1,59 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sfperusacdev/identitysdk"
-	"github.com/sfperusacdev/identitysdk/services/internal/email"
 	"github.com/sfperusacdev/identitysdk/services/internal/sms"
+	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
-func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subject string, htmlContent string) (*email.EmailSenderResponse, error) {
+type SendEmailDetails struct {
+	TxId string
+}
+
+func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subject string, htmlContent string, tags ...string) (*SendEmailDetails, error) {
 	domain := identitysdk.Empresa(ctx)
-
-	apikey, err := s.ReadVariable(ctx, "RESEND_API_KEY")
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
 	if err != nil {
-		slog.Error("failed to read RESEND_API_KEY", "domain", domain, "error", err)
-		return nil, fmt.Errorf("reading RESEND_API_KEY: %w", err)
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return nil, err
 	}
 
-	outgoingMail, err := s.ReadVariable(ctx, "RESEND_OUTGOING_MAIL")
-	if err != nil {
-		slog.Error("failed to read RESEND_OUTGOING_MAIL", "domain", domain, "error", err)
-		return nil, fmt.Errorf("reading RESEND_OUTGOING_MAIL: %w", err)
+	var id = uuid.NewString()
+	var data = map[string]string{
+		"id":              id,
+		"company_code":    domain,
+		"recipient_email": to,
+		"subject":         subject,
+		"body":            htmlContent,
+		"tags":            strings.Join(tags, ", "),
 	}
 
-	client, err := email.NewResendEmail(apikey, outgoingMail)
-	if err != nil {
-		slog.Error("failed to initialize ResendEmail client", "domain", domain, "error", err)
-		return nil, fmt.Errorf("initializing email client: %w", err)
+	var buff bytes.Buffer
+	encoder := json.NewEncoder(&buff)
+	if err := encoder.Encode(data); err != nil {
+		slog.Error("Failed to encode email data to JSON", "data", data, "error", err)
+		return nil, err
 	}
 
-	res, err := client.Send(ctx, to, subject, htmlContent)
-	if err != nil {
-		slog.Error("failed to send email", "domain", domain, "to", to, "subject", subject, "error", err)
-		return nil, fmt.Errorf("sending email: %w", err)
+	if err := xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/push/email",
+		xreq.WithJsonContentType(),
+		xreq.WithRequestBody(&buff),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+	); err != nil {
+		slog.Error("Failed to send email request", "baseurl", baseurl, "endpoint", "/api/v1/_internal/push/email", "error", err)
+		return nil, err
 	}
-	return &res, nil
+
+	return &SendEmailDetails{TxId: id}, nil
 }
 
 // region SMS

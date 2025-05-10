@@ -10,11 +10,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.60
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.77.1
+	github.com/google/uuid v1.6.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/pressly/goose/v3 v3.24.2
-	github.com/resend/resend-go/v2 v2.18.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
