@@ -4,21 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sfperusacdev/identitysdk"
-	"github.com/sfperusacdev/identitysdk/services/internal/sms"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
-type SendEmailDetails struct {
+type SendDetails struct {
 	TxId string
 }
 
-func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subject string, htmlContent string, tags ...string) (*SendEmailDetails, error) {
+func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subject string, htmlContent string, tags ...string) (*SendDetails, error) {
 	domain := identitysdk.Empresa(ctx)
 	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
 	if err != nil {
@@ -33,13 +32,17 @@ func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subjec
 		"recipient_email": to,
 		"subject":         subject,
 		"body":            htmlContent,
-		"tags":            strings.Join(tags, ", "),
+		"tags":            strings.Join(tags, ";"),
 	}
 
 	var buff bytes.Buffer
 	encoder := json.NewEncoder(&buff)
 	if err := encoder.Encode(data); err != nil {
-		slog.Error("Failed to encode email data to JSON", "data", data, "error", err)
+		slog.Error("Failed to encode email data to JSON",
+			"domain", domain,
+			"data", data,
+			"error", err,
+		)
 		return nil, err
 	}
 
@@ -49,42 +52,160 @@ func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subjec
 		xreq.WithRequestBody(&buff),
 		xreq.WithAccessToken(identitysdk.GetAccessToken()),
 	); err != nil {
-		slog.Error("Failed to send email request", "baseurl", baseurl, "endpoint", "/api/v1/_internal/push/email", "error", err)
+		slog.Error("Failed to send email request",
+			"domain", domain,
+			"baseurl", baseurl,
+			"endpoint", "/api/v1/_internal/push/email",
+			"error", err,
+		)
 		return nil, err
 	}
 
-	return &SendEmailDetails{TxId: id}, nil
+	return &SendDetails{TxId: id}, nil
 }
 
-// region SMS
-
-func (s *ExternalBridgeService) SendSMS(ctx context.Context, number string, textMessage string) (*sms.SmsSenderResponse, error) {
+func (s *ExternalBridgeService) SendSMS(ctx context.Context, number string, message string, tags ...string) (*SendDetails, error) {
 	domain := identitysdk.Empresa(ctx)
-
-	username, err := s.ReadVariable(ctx, "LABSMOBILE_USERNAME")
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
 	if err != nil {
-		slog.Error("failed to read LABSMOBILE_USERNAME", "domain", domain, "error", err)
-		return nil, fmt.Errorf("reading LABSMOBILE_USERNAME: %w", err)
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return nil, err
 	}
 
-	password, err := s.ReadVariable(ctx, "LABSMOBILE_PASSWORD")
-	if err != nil {
-		slog.Error("failed to read LABSMOBILE_PASSWORD", "domain", domain, "error", err)
-		return nil, fmt.Errorf("reading LABSMOBILE_PASSWORD: %w", err)
+	var id = uuid.NewString()
+	var data = map[string]string{
+		"id":              id,
+		"company_code":    domain,
+		"recipient_phone": number,
+		"message":         message,
+		"tags":            strings.Join(tags, ";"),
 	}
 
-	client, err := sms.NewLabsmobile(username, password)
-	if err != nil {
-		slog.Error("failed to initialize Labsmobile client", "domain", domain, "error", err)
-		return nil, fmt.Errorf("initializing Labsmobile client: %w", err)
+	var buff bytes.Buffer
+	encoder := json.NewEncoder(&buff)
+	if err := encoder.Encode(data); err != nil {
+		slog.Error("Failed to encode sms data to JSON",
+			"domain", domain,
+			"data", data,
+			"error", err,
+		)
+		return nil, err
 	}
 
-	res, err := client.Send(ctx, number, textMessage)
-	if err != nil {
-		slog.Error("failed to send SMS", "domain", domain, "number", number, "error", err)
-		return nil, fmt.Errorf("sending SMS: %w", err)
+	if err := xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/push/sms",
+		xreq.WithJsonContentType(),
+		xreq.WithRequestBody(&buff),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+	); err != nil {
+		slog.Error("Failed to send sms request",
+			"domain", domain,
+			"baseurl", baseurl,
+			"endpoint", "/api/v1/_internal/push/sms",
+			"error", err,
+		)
+		return nil, err
 	}
 
-	slog.Info("SMS sent successfully", "domain", domain, "number", number, "tx_id", res.TxId)
-	return res, nil
+	return &SendDetails{TxId: id}, nil
+}
+
+// region Retrive
+type MailRecord struct {
+	ID             uuid.UUID `json:"id"`
+	CompanyCode    *string   `json:"company_code,omitempty"`
+	RecipientEmail string    `json:"recipient_email"`
+
+	Tags *string `json:"tags,omitempty"`
+
+	Subject      string  `json:"subject"`
+	Body         string  `json:"body"`
+	Status       string  `json:"status"`
+	ErrorMessage *string `json:"error_message,omitempty"`
+	RetryCount   int     `json:"retry_count"`
+
+	RefId *string `json:"ref_id,omitempty"`
+
+	LastAttemptAt *time.Time `json:"last_attempt_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// GetEmailsByTag searches for emails that have been sent or are queued for sending.
+// The search is filtered using the provided tag, which supports partial matching (e.g., "promo%").
+// The filter applies to the "tags" field, using a LIKE query with a trailing wildcard for broader matches.
+func (s *ExternalBridgeService) GetEmailsByTag(ctx context.Context, tagFilter string) ([]MailRecord, error) {
+	domain := identitysdk.Empresa(ctx)
+	token := identitysdk.Token(ctx)
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
+	if err != nil {
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return nil, err
+	}
+	var res struct {
+		Data []MailRecord `json:"data"`
+	}
+	if err := xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/retrive/email",
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&res),
+	); err != nil {
+		slog.Error("Failed to retrieve Emails",
+			"domain", domain,
+			"baseurl", baseurl,
+			"endpoint", "/api/v1/_internal/retrive/email",
+			"error", err.Error(),
+		)
+		return nil, err
+	}
+	return res.Data, nil
+}
+
+type SMSRecord struct {
+	ID             uuid.UUID `json:"id"`
+	CompanyCode    *string   `json:"company_code,omitempty"`
+	RecipientPhone string    `json:"recipient_phone"`
+	Message        string    `json:"message"`
+
+	Tags *string `json:"tags,omitempty"`
+
+	Status       string  `json:"status"`
+	ErrorMessage *string `json:"error_message,omitempty"`
+	RetryCount   int     `json:"retry_count"`
+
+	RefID *string `json:"ref_id,omitempty"`
+
+	LastAttemptAt *time.Time `json:"last_attempt_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// GetMessagesByTag searches for SMS messages that have been sent or are queued for sending.
+// The search is filtered using the provided tag, which supports partial matching (e.g., "alert%").
+// The filter applies to the "tags" field, using a LIKE query with a trailing wildcard for broader matches.
+func (s *ExternalBridgeService) GetMessagesByTag(ctx context.Context, tagFilter string) ([]SMSRecord, error) {
+	domain := identitysdk.Empresa(ctx)
+	token := identitysdk.Token(ctx)
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
+	if err != nil {
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return nil, err
+	}
+	var res struct {
+		Data []SMSRecord `json:"data"`
+	}
+	if err := xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/retrive/sms",
+		xreq.WithAuthorization(token),
+		xreq.WithUnmarshalResponseInto(&res),
+	); err != nil {
+		slog.Error("Failed to retrieve SMS",
+			"domain", domain,
+			"baseurl", baseurl,
+			"endpoint", "/api/v1/_internal/retrive/sms",
+			"error", err.Error(),
+		)
+		return nil, err
+	}
+	return res.Data, nil
 }
