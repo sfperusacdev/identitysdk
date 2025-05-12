@@ -19,10 +19,10 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/httpapi"
+	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
-	connection "github.com/user0608/pg-connection"
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v2"
 )
@@ -203,7 +203,7 @@ func (s *Service) getCconnectionManager() (connection.StorageManager, error) {
 		return nil, err
 	}
 
-	return connection.OpenWithConfigs(connection.DBConfigParams{
+	return connection.NewConnection(connection.DBConfigParams{
 		DBHost:     c.GetHost(),
 		DBPort:     fmt.Sprint(c.GetPort()),
 		DBName:     c.GetDBName(),

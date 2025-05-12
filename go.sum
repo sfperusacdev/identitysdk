@@ -124,8 +124,6 @@ github.com/user0608/goones v0.10.0 h1:HAQ5CW2zaGB8Z2LpPZf/vu28j0Jb+95NdkT9qvUhIw
 github.com/user0608/goones v0.10.0/go.mod h1:AEP3Wu0di9nenl8at1seDCU1Wz429eSVpoaCrJAZvZE=
 github.com/user0608/ifdevmode v0.0.3 h1:C3QI33wNvfEug75RvJUTqacLhEayc2Jf5+LpGa69ozE=
 github.com/user0608/ifdevmode v0.0.3/go.mod h1:xKp8oalo4pacK5f9X00W2hnmJ9vQcGXj0tIXce+rUqY=
-github.com/user0608/pg-connection v1.2.0 h1:TXTXk9SvM0RkOsGr4EzDHf331FzhCgh3XyIU2NWGyv4=
-github.com/user0608/pg-connection v1.2.0/go.mod h1:caVESyW7hGARrD/ZNe1fIb+Jx2h8Xck8QYU01KS+Lr0=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasttemplate v1.2.2 h1:lxLXG0uE3Qnshl9QyaK6XJxMXlQZELvChBOCmQD0Loo=

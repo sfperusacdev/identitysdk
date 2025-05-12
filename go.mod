@@ -20,9 +20,10 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/user0608/goones v0.10.0
 	github.com/user0608/ifdevmode v0.0.3
-	github.com/user0608/pg-connection v1.2.0
 	go.uber.org/fx v1.23.0
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/driver/postgres v1.5.4
+	gorm.io/gorm v1.25.5
 )
 
 require (
@@ -75,6 +76,4 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.5.4 // indirect
-	gorm.io/gorm v1.25.5 // indirect
 )
