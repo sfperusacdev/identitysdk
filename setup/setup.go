@@ -18,6 +18,8 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/helpers/properties"
+	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/services"
@@ -353,6 +355,12 @@ func (s *Service) Run(opts ...fx.Option) error {
 				},
 			),
 			fx.Provide(services.NewExternalBridgeService),
+			fx.Provide(
+				fx.Annotate(
+					propsprovider.NewSystemPropsPgProvider,
+					fx.As(new(properties.SystemPropsProvider)),
+				),
+			),
 			httpapi.Module,
 			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
 		)
