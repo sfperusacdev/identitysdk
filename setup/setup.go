@@ -16,9 +16,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
+	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
+	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
 	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
@@ -38,6 +41,7 @@ type ServiceOptions struct {
 	configProvider ConfigsProviderFunc
 	details        ServiceDetails
 	migrationsDir  fs.FS
+	propertiesDir  fs.FS
 }
 
 type ServiceOption func(*ServiceOptions)
@@ -49,6 +53,16 @@ func WithMigrationSource(sf fs.FS) ServiceOption {
 			return
 		}
 		o.migrationsDir = sf
+	}
+}
+
+func WithSystemPropertiesSource(sf fs.FS) ServiceOption {
+	return func(o *ServiceOptions) {
+		if sf == nil {
+			slog.Warn("Properties filesystem is nil, operation skipped")
+			return
+		}
+		o.propertiesDir = sf
 	}
 }
 
@@ -171,6 +185,50 @@ func NewService(
 			service.migrationCommand("downgrade", "Downgrade the database schema to a previous version", "down"),
 			service.migrationCommand("status", "Show database version status", "status"),
 		)
+	}
+	if options.propertiesDir != nil {
+		var packageName *string
+
+		var command = &cobra.Command{
+			Use: "system-props",
+			Run: func(cmd *cobra.Command, args []string) {
+				if packageName == nil {
+					var val = "properties"
+					packageName = &val
+				}
+				entries, err := service.readProperties(options.propertiesDir)
+				if err != nil {
+					slog.Error("reading properties", "error", err)
+					os.Exit(1)
+				}
+				var str strings.Builder
+				str.WriteString(fmt.Sprintf("package %s\n\n", *packageName))
+				str.WriteString(`type SystemProperty string`)
+				str.WriteByte('\n')
+				str.WriteByte('\n')
+				var length = len(entries)
+				for i, entry := range entries {
+					var name = strings.ReplaceAll(slug.Make(entry.ID), "-", "_")
+					name = strings.ToUpper(name)
+					if entry.Description != "" {
+						str.WriteString(fmt.Sprintf("// %s\n", entry.Description))
+					}
+					if entry.Type != "" {
+						str.WriteString(fmt.Sprintf("// type: %s\n", entry.Type))
+					}
+					str.WriteString(
+						fmt.Sprintf(`const %s SystemProperty = "%s"`, name, entry.ID),
+					)
+					if i != length-1 {
+						str.WriteByte('\n')
+						str.WriteByte('\n')
+					}
+				}
+				fmt.Println(str.String())
+			},
+		}
+		packageName = command.Flags().StringP("package", "p", "properties", "Specifies the Go package name for the generated code")
+		service.Command.AddCommand(command)
 	}
 	return service
 }
@@ -339,8 +397,19 @@ func (s *Service) Run(opts ...fx.Option) error {
 			slog.Info("Migrations completed successfully")
 		}
 
+		var systemProperties = []models.DetailedSystemProperty{}
+		if s.options.propertiesDir != nil {
+			entries, err := s.readProperties(s.options.propertiesDir)
+			if err != nil {
+				slog.Error("Failed to retrieve system properties", "error", err)
+				os.Exit(1)
+			}
+			systemProperties = entries
+		}
+
 		opts = append(
 			opts,
+			fx.Supply(systemProperties),
 			fx.Provide(
 				func() ConfigPath {
 					if s.configPath == nil {
@@ -361,6 +430,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 					fx.As(new(properties.SystemPropsProvider)),
 				),
 			),
+			propertiesfx.Module,
 			httpapi.Module,
 			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
 		)

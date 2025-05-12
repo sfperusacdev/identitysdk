@@ -20,9 +20,21 @@
                                     </xs:restriction>
                                 </xs:simpleType>
                             </xs:element>
-                            <xs:element name="group" type="xs:string" minOccurs="0" maxOccurs="1" />
+                            <xs:element name="type" minOccurs="0" maxOccurs="1">
+                                <xs:simpleType>
+                                    <xs:restriction base="xs:string">
+                                        <xs:enumeration value="string" />
+                                        <xs:enumeration value="number" />
+                                        <xs:enumeration value="boolean" />
+                                        <xs:enumeration value="array" />
+                                        <xs:enumeration value="object" />
+                                    </xs:restriction>
+                                </xs:simpleType>
+                            </xs:element>
+                            <xs:element name="value" type="xs:string" minOccurs="0" maxOccurs="1" />
                             <xs:element name="description" type="xs:string" minOccurs="0"
                                 maxOccurs="1" />
+                            <xs:element name="group" type="xs:string" minOccurs="0" maxOccurs="1" />
                         </xs:all>
                     </xs:complexType>
                 </xs:element>

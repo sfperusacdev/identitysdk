@@ -7,12 +7,15 @@ import (
 	"sync"
 
 	"github.com/sfperusacdev/identitysdk"
+
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
+	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
 	"github.com/user0608/goones/errs"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -26,12 +29,17 @@ func (*PropItem) TableName() string { return "_system_properties" }
 type SystemPropsPgProvider struct {
 	ready   sync.Map
 	manager connection.StorageManager
+	entries []models.DetailedSystemProperty
 }
 
 var _ properties.SystemPropsProvider = (*SystemPropsPgProvider)(nil)
+var _ properties.SystemPropertiesMutator = (*SystemPropsPgProvider)(nil)
 
-func NewSystemPropsPgProvider(manager connection.StorageManager) *SystemPropsPgProvider {
-	return &SystemPropsPgProvider{manager: manager}
+func NewSystemPropsPgProvider(
+	manager connection.StorageManager,
+	entries []models.DetailedSystemProperty,
+) *SystemPropsPgProvider {
+	return &SystemPropsPgProvider{manager: manager, entries: entries}
 }
 
 func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string) error {
@@ -39,16 +47,43 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 		return nil
 	}
 	const script = `
-	CREATE TABLE IF NOT EXISTS system_properties (
-		key TEXT PRIMARY KEY,
-		title TEXT NOT NULL,
-		grupo TEXT NOT NULL,
+	CREATE TABLE IF NOT EXISTS _system_properties (
+		key VARCHAR(255) PRIMARY KEY,
+		title VARCHAR(255) NOT NULL,
+		grupo TEXT,
 		description TEXT,
-		value JSONB NOT NULL,
-		priority SMALLINT DEFAULT 0 CHECK (priority >= 0)
+		value TEXT NOT NULL,
+		priority SMALLINT DEFAULT 0 CHECK (priority >= 0),
+		data_type TEXT NOT NULL CHECK (data_type IN ('string', 'number', 'boolean', 'array', 'object'))
 	)`
 	var tx = r.manager.Conn(ctx)
 	rs := tx.Session(&gorm.Session{Logger: logger.Discard}).Exec(script)
+	if rs.Error != nil {
+		return errs.Pgf(rs.Error)
+	}
+	var records = make([]map[string]any, 0, len(r.entries))
+	for i, entry := range r.entries {
+		records = append(
+			records,
+			map[string]any{
+				"key":         entry.ID,
+				"title":       entry.Title,
+				"grupo":       entry.Group,
+				"description": entry.Description,
+				"value":       entry.Value,
+				"priority":    i + 1,
+				"data_type":   entry.Type,
+			},
+		)
+	}
+	rs = tx.Session(&gorm.Session{Logger: logger.Discard}).
+		Clauses(
+			clause.OnConflict{
+				Columns:   []clause.Column{{Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"title", "grupo", "description", "priority", "data_type"}),
+			},
+		).Table("_system_properties").Create(&records)
+
 	if rs.Error != nil {
 		return errs.Pgf(rs.Error)
 	}
@@ -63,12 +98,12 @@ func (r *SystemPropsPgProvider) GetStr(ctx context.Context, key string) (string,
 	key = identitysdk.Empresa(ctx, key)
 	conn := r.manager.Conn(ctx)
 	var item PropItem
-	err := conn.Where("key = ?", key).Select("value").First(&item).Error
+	err := conn.Where("key = ?", key).Select("value").Find(&item).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return "", properties.NewPropertyNotFoundError(key)
-		}
-		return "", err
+		return "", errs.Pgf(err)
+	}
+	if item.Key != key {
+		return "", properties.NewPropertyNotFoundError(key)
 	}
 	return item.Value, nil
 }
@@ -110,4 +145,56 @@ func (r *SystemPropsPgProvider) GetJSON(ctx context.Context, key string, target 
 		return err
 	}
 	return json.Unmarshal([]byte(strVal), target)
+}
+
+// RetriveAll implements properties.SystemPropertiesMutator.
+func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.DetailedSystemProperty, error) {
+	if err := r.ensureTable(ctx, identitysdk.Empresa(ctx)); err != nil {
+		return nil, err
+	}
+	var prefix = identitysdk.EmpresaPrefix(ctx)
+	const qry = `
+		SELECT 
+		key AS id, 
+		title, 
+		grupo, 
+		description, 
+		data_type AS type, 
+		value
+	FROM 
+		_system_properties
+	WHERE 
+		key LIKE ?
+	ORDER BY 
+		priority`
+	var tx = r.manager.Conn(ctx)
+	var entries = []models.DetailedSystemProperty{}
+	if rs := tx.Raw(qry, prefix).Scan(&entries); rs.Error != nil {
+		return nil, errs.Pgf(rs.Error)
+	}
+	return entries, nil
+}
+
+// Update implements properties.SystemPropertiesMutator.
+func (r *SystemPropsPgProvider) Update(ctx context.Context, entries []models.BasicSystemProperty) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	if err := r.ensureTable(ctx, identitysdk.Empresa(ctx)); err != nil {
+		return err
+	}
+	const qry = `update _system_properties set value=? where key=?`
+	return r.manager.WithTx(ctx, func(ctx context.Context) error {
+		var tx = r.manager.Conn(ctx)
+		for _, entry := range entries {
+			var rs = tx.Exec(qry,
+				entry.Value,
+				identitysdk.Empresa(ctx, entry.ID),
+			)
+			if rs.Error != nil {
+				return errs.Pgf(rs.Error)
+			}
+		}
+		return nil
+	})
 }

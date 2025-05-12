@@ -3,8 +3,14 @@ package properties
 import (
 	"context"
 
+	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	"github.com/shopspring/decimal"
 )
+
+type SystemPropertiesMutator interface {
+	RetriveAll(ctx context.Context) ([]models.DetailedSystemProperty, error)
+	Update(ctx context.Context, entries []models.BasicSystemProperty) error
+}
 
 type SystemPropsProvider interface {
 	GetStr(ctx context.Context, key string) (string, error)
