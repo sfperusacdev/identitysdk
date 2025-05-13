@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	"github.com/user0608/goones/answer"
@@ -26,6 +27,9 @@ func (h *ListarPropertiesHandler) HandleRequest(c echo.Context) error {
 	records, err := h.mutate.RetriveAll(c.Request().Context())
 	if err != nil {
 		return answer.Err(c, err)
+	}
+	for i := range records {
+		records[i].ID = identitysdk.RemovePrefix(records[i].ID)
 	}
 	return answer.Ok(c, records)
 }
