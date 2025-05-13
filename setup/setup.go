@@ -203,7 +203,7 @@ func NewService(
 				}
 				var str strings.Builder
 				str.WriteString(fmt.Sprintf("package %s\n\n", *packageName))
-				str.WriteString(`type SystemProperty string`)
+				str.WriteString(`import "github.com/sfperusacdev/identitysdk/helpers/properties"`)
 				str.WriteByte('\n')
 				str.WriteByte('\n')
 				var length = len(entries)
@@ -217,7 +217,7 @@ func NewService(
 						str.WriteString(fmt.Sprintf("// type: %s\n", entry.Type))
 					}
 					str.WriteString(
-						fmt.Sprintf(`const %s SystemProperty = "%s"`, name, entry.ID),
+						fmt.Sprintf(`const %s properties.SystemProperty = "%s"`, name, entry.ID),
 					)
 					if i != length-1 {
 						str.WriteByte('\n')

@@ -92,24 +92,24 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 	return nil
 }
 
-func (r *SystemPropsPgProvider) GetStr(ctx context.Context, key string) (string, error) {
+func (r *SystemPropsPgProvider) GetStr(ctx context.Context, key properties.SystemProperty) (string, error) {
 	if err := r.ensureTable(ctx, identitysdk.Empresa(ctx)); err != nil {
 		return "", err
 	}
-	key = identitysdk.Empresa(ctx, key)
+	keyStr := identitysdk.Empresa(ctx, string(key))
 	conn := r.manager.Conn(ctx)
 	var item PropItem
-	err := conn.Where("key = ?", key).Select("value").Find(&item).Error
+	err := conn.Where("key = ?", keyStr).Select("value").Find(&item).Error
 	if err != nil {
 		return "", errs.Pgf(err)
 	}
-	if item.Key != key {
-		return "", properties.NewPropertyNotFoundError(key)
+	if item.Key != keyStr {
+		return "", properties.NewPropertyNotFoundError(keyStr)
 	}
 	return item.Value, nil
 }
 
-func (r *SystemPropsPgProvider) GetBool(ctx context.Context, key string) (bool, error) {
+func (r *SystemPropsPgProvider) GetBool(ctx context.Context, key properties.SystemProperty) (bool, error) {
 	strVal, err := r.GetStr(ctx, key)
 	if err != nil {
 		return false, err
@@ -123,7 +123,7 @@ func (r *SystemPropsPgProvider) GetBool(ctx context.Context, key string) (bool, 
 	}
 }
 
-func (r *SystemPropsPgProvider) GetDecimal(ctx context.Context, key string) (decimal.Decimal, error) {
+func (r *SystemPropsPgProvider) GetDecimal(ctx context.Context, key properties.SystemProperty) (decimal.Decimal, error) {
 	strVal, err := r.GetStr(ctx, key)
 	if err != nil {
 		return decimal.Zero, err
@@ -132,7 +132,7 @@ func (r *SystemPropsPgProvider) GetDecimal(ctx context.Context, key string) (dec
 	return decimal.NewFromFloat(_float64), nil
 }
 
-func (r *SystemPropsPgProvider) GetInt(ctx context.Context, key string) (int64, error) {
+func (r *SystemPropsPgProvider) GetInt(ctx context.Context, key properties.SystemProperty) (int64, error) {
 	_dec, err := r.GetDecimal(ctx, key)
 	if err != nil {
 		return 0, err
@@ -140,7 +140,7 @@ func (r *SystemPropsPgProvider) GetInt(ctx context.Context, key string) (int64, 
 	return _dec.IntPart(), nil
 }
 
-func (r *SystemPropsPgProvider) GetJSON(ctx context.Context, key string, target any) error {
+func (r *SystemPropsPgProvider) GetJSON(ctx context.Context, key properties.SystemProperty, target any) error {
 	strVal, err := r.GetStr(ctx, key)
 	if err != nil {
 		return err
