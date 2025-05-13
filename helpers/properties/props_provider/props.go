@@ -66,7 +66,7 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 		records = append(
 			records,
 			map[string]any{
-				"key":         entry.ID,
+				"key":         identitysdk.Empresa(ctx, entry.ID),
 				"title":       entry.Title,
 				"grupo":       entry.Group,
 				"description": entry.Description,
