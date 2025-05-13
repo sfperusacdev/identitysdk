@@ -3,6 +3,7 @@ package propsprovider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -183,18 +184,28 @@ func (r *SystemPropsPgProvider) Update(ctx context.Context, entries []models.Bas
 	if err := r.ensureTable(ctx, identitysdk.Empresa(ctx)); err != nil {
 		return err
 	}
-	const qry = `update _system_properties set value=? where key=?`
+	const qry = `
+    UPDATE _system_properties AS sp
+    SET value = data.value
+    FROM (VALUES %s) AS data(id, value)
+    WHERE sp.key = data.id`
+
 	return r.manager.WithTx(ctx, func(ctx context.Context) error {
-		var tx = r.manager.Conn(ctx)
+		tx := r.manager.Conn(ctx)
+
+		placeholders := make([]string, 0, len(entries))
+		values := make([]interface{}, 0, len(entries)*2)
 		for _, entry := range entries {
-			var rs = tx.Exec(qry,
-				entry.Value,
-				identitysdk.Empresa(ctx, entry.ID),
-			)
-			if rs.Error != nil {
-				return errs.Pgf(rs.Error)
-			}
+			placeholders = append(placeholders, "(?, ?)")
+			values = append(values, identitysdk.Empresa(ctx, entry.ID), entry.Value)
 		}
+
+		finalQry := fmt.Sprintf(qry, strings.Join(placeholders, ","))
+		if err := tx.Exec(finalQry, values...).Error; err != nil {
+			return errs.Pgf(err)
+		}
+
 		return nil
 	})
+
 }
