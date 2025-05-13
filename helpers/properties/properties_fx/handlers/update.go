@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/sfperusacdev/identitysdk/binds"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	"github.com/sfperusacdev/identitysdk/httpapi"
@@ -26,6 +27,9 @@ func (h *UpdatePropertiesHandler) GetPath() string {
 func (h *UpdatePropertiesHandler) HandleRequest(c echo.Context) error {
 	var req struct {
 		Items []models.BasicSystemProperty `json:"items"`
+	}
+	if err := binds.JSON(c, &req); err != nil {
+		return answer.JsonErr(c)
 	}
 	if err := h.mutate.Update(c.Request().Context(), req.Items); err != nil {
 		return answer.Err(c, err)
