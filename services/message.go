@@ -17,7 +17,61 @@ type SendDetails struct {
 	TxId string
 }
 
-func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subject string, htmlContent string, tags ...string) (*SendDetails, error) {
+type Mail struct {
+	CompanyCode    string   `json:"company_code"`
+	EecipientEmail string   `json:"recipient_email"`
+	Subject        string   `json:"subject"`
+	Body           string   `json:"body"`
+	Tags           []string `json:"tags"`
+}
+
+func (s *ExternalBridgeService) SendBatchMails(ctx context.Context, mails ...Mail) error {
+	if len(mails) == 0 {
+		return nil
+	}
+
+	domain := identitysdk.Empresa(ctx)
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
+	if err != nil {
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return err
+	}
+
+	var elements = make([]map[string]string, 0, len(mails))
+	for _, m := range mails {
+		elements = append(elements, map[string]string{
+			"id":              uuid.NewString(),
+			"company_code":    domain,
+			"recipient_email": m.EecipientEmail,
+			"subject":         m.Subject,
+			"body":            m.Body,
+			"tags":            strings.Join(m.Tags, ";"),
+		})
+	}
+	var data = map[string]any{
+		"skip_errors": true,
+		"mails":       elements,
+	}
+
+	var buff bytes.Buffer
+	encoder := json.NewEncoder(&buff)
+	if err := encoder.Encode(data); err != nil {
+		slog.Error("Failed to encode mails data to JSON",
+			"domain", domain,
+			"data", data,
+			"error", err,
+		)
+		return err
+	}
+	return xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/push/email",
+		xreq.WithJsonContentType(),
+		xreq.WithRequestBody(&buff),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+	)
+}
+
+func (s *ExternalBridgeService) SendMail(ctx context.Context, to string, subject string, htmlContent string, tags ...string) (*SendDetails, error) {
 	domain := identitysdk.Empresa(ctx)
 	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
 	if err != nil {
@@ -26,13 +80,15 @@ func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subjec
 	}
 
 	var id = uuid.NewString()
-	var data = map[string]string{
-		"id":              id,
-		"company_code":    domain,
-		"recipient_email": to,
-		"subject":         subject,
-		"body":            htmlContent,
-		"tags":            strings.Join(tags, ";"),
+	var data = map[string]any{
+		"mails": map[string]string{
+			"id":              id,
+			"company_code":    domain,
+			"recipient_email": to,
+			"subject":         subject,
+			"body":            htmlContent,
+			"tags":            strings.Join(tags, ";"),
+		},
 	}
 
 	var buff bytes.Buffer
@@ -64,6 +120,58 @@ func (s *ExternalBridgeService) SendEmail(ctx context.Context, to string, subjec
 	return &SendDetails{TxId: id}, nil
 }
 
+type SMS struct {
+	CompanyCode    string   `json:"company_code"`
+	RecipientPhone string   `json:"recipient_phone"`
+	Message        string   `json:"message"`
+	Tags           []string `json:"tags"`
+}
+
+// region sms
+func (s *ExternalBridgeService) SendBatchSMS(ctx context.Context, smss ...SMS) error {
+	if len(smss) == 0 {
+		return nil
+	}
+	domain := identitysdk.Empresa(ctx)
+	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
+	if err != nil {
+		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
+		return err
+	}
+
+	var elements = make([]map[string]string, 0, len(smss))
+	for _, m := range smss {
+		elements = append(elements, map[string]string{
+			"id":              uuid.NewString(),
+			"company_code":    domain,
+			"recipient_phone": m.RecipientPhone,
+			"message":         m.Message,
+			"tags":            strings.Join(m.Tags, ";"),
+		})
+	}
+	var data = map[string]any{
+		"skip_errors": true,
+		"sms":         elements,
+	}
+
+	var buff bytes.Buffer
+	encoder := json.NewEncoder(&buff)
+	if err := encoder.Encode(data); err != nil {
+		slog.Error("Failed to encode sms data to JSON",
+			"domain", domain,
+			"data", data,
+			"error", err,
+		)
+		return err
+	}
+	return xreq.MakeRequest(ctx,
+		baseurl, "/api/v1/_internal/push/sms",
+		xreq.WithJsonContentType(),
+		xreq.WithRequestBody(&buff),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
+	)
+}
+
 func (s *ExternalBridgeService) SendSMS(ctx context.Context, number string, message string, tags ...string) (*SendDetails, error) {
 	domain := identitysdk.Empresa(ctx)
 	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
@@ -73,12 +181,14 @@ func (s *ExternalBridgeService) SendSMS(ctx context.Context, number string, mess
 	}
 
 	var id = uuid.NewString()
-	var data = map[string]string{
-		"id":              id,
-		"company_code":    domain,
-		"recipient_phone": number,
-		"message":         message,
-		"tags":            strings.Join(tags, ";"),
+	var data = map[string]any{
+		"sms": map[string]string{
+			"id":              id,
+			"company_code":    domain,
+			"recipient_phone": number,
+			"message":         message,
+			"tags":            strings.Join(tags, ";"),
+		},
 	}
 
 	var buff bytes.Buffer
