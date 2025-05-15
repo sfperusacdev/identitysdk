@@ -7,7 +7,7 @@ type PropertyNotFoundError struct {
 }
 
 func (e *PropertyNotFoundError) Error() string {
-	return fmt.Sprintf("property not found: %s", e.Key)
+	return fmt.Sprintf("system property not found: %s", e.Key)
 }
 
 func NewPropertyNotFoundError(key string) error {

@@ -77,16 +77,18 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 			},
 		)
 	}
-	rs = tx.Session(&gorm.Session{Logger: logger.Discard}).
-		Clauses(
-			clause.OnConflict{
-				Columns:   []clause.Column{{Name: "key"}},
-				DoUpdates: clause.AssignmentColumns([]string{"title", "grupo", "description", "priority", "data_type"}),
-			},
-		).Table("_system_properties").Create(&records)
+	if len(records) > 0 {
+		rs = tx.Session(&gorm.Session{Logger: logger.Discard}).
+			Clauses(
+				clause.OnConflict{
+					Columns:   []clause.Column{{Name: "key"}},
+					DoUpdates: clause.AssignmentColumns([]string{"title", "grupo", "description", "priority", "data_type"}),
+				},
+			).Table("_system_properties").Create(&records)
 
-	if rs.Error != nil {
-		return errs.Pgf(rs.Error)
+		if rs.Error != nil {
+			return errs.Pgf(rs.Error)
+		}
 	}
 	r.ready.Store(empresa, true)
 	return nil
@@ -99,7 +101,7 @@ func (r *SystemPropsPgProvider) GetStr(ctx context.Context, key properties.Syste
 	keyStr := identitysdk.Empresa(ctx, string(key))
 	conn := r.manager.Conn(ctx)
 	var item PropItem
-	err := conn.Where("key = ?", keyStr).Select("value").Find(&item).Error
+	err := conn.Where("key = ?", keyStr).Select("key", "value").Find(&item).Error
 	if err != nil {
 		return "", errs.Pgf(err)
 	}
