@@ -29,22 +29,29 @@ func isValidURL(rawURL string) bool {
 	return true
 }
 
-func (s *ExternalBridgeService) CreateNewFileStorer(ctx context.Context, bucket string) (storage.FileStorer, error) {
-	accessKeyID, err := s.ReadVariable(ctx, "AWS_ACCESS_KEY_ID")
+func (s *ExternalBridgeService) CreateNewFileStorer(ctx context.Context, bucket string, isGlobal ...bool) (storage.FileStorer, error) {
+	var readVariablef func(ctx context.Context, key string) (string, error)
+	if len(isGlobal) > 0 && isGlobal[0] {
+		readVariablef = s.ReadVariableGlobal
+	} else {
+		readVariablef = s.ReadVariable
+	}
+
+	accessKeyID, err := readVariablef(ctx, "AWS_ACCESS_KEY_ID")
 	if err != nil && !errors.Is(err, ErrVariableNotFound) {
 		return nil, fmt.Errorf("failed to read AWS_ACCESS_KEY_ID: %w", err)
 	}
 
-	secretAccessKey, err := s.ReadVariable(ctx, "AWS_SECRET_ACCESS_KEY")
+	secretAccessKey, err := readVariablef(ctx, "AWS_SECRET_ACCESS_KEY")
 	if err != nil && !errors.Is(err, ErrVariableNotFound) {
 		return nil, fmt.Errorf("failed to read AWS_SECRET_ACCESS_KEY: %w", err)
 	}
-	baseURL, err := s.ReadVariable(ctx, "S3_SDK_STORAGE_BASE_URL")
+	baseURL, err := readVariablef(ctx, "S3_SDK_STORAGE_BASE_URL")
 	if err != nil && !errors.Is(err, ErrVariableNotFound) {
 		return nil, fmt.Errorf("failed to read S3_SDK_STORAGE_BASE_URL: %w", err)
 	}
 
-	region, err := s.ReadVariable(ctx, "AWS_REGION")
+	region, err := readVariablef(ctx, "AWS_REGION")
 	if err != nil && !errors.Is(err, ErrVariableNotFound) {
 		return nil, fmt.Errorf("failed to read AWS_REGION: %w", err)
 	}
@@ -75,7 +82,6 @@ func (s *ExternalBridgeService) CreateNewFileStorer(ctx context.Context, bucket 
 		if accessKeyID != "" && secretAccessKey != "" {
 			o.Credentials = credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, "")
 		}
-		slog.Info("S3 base URL successfully configured", "url", baseURL)
 	})
 	return storage.NewS3FileStoreWithClient(ctx, bucket, s3Client)
 }
