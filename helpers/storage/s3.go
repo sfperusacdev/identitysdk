@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"path"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -79,6 +81,10 @@ func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error)
 		Key:    aws.String(fullPath),
 	})
 	if err != nil {
+		var ae smithy.APIError
+		if errors.As(err, &ae) && ae.ErrorCode() == "NoSuchKey" {
+			return nil, ErrFileNotFound
+		}
 		slog.Error("Failed to get object from S3",
 			"bucket", s.bucketName,
 			"key", fullPath,

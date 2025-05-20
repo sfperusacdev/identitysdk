@@ -2,8 +2,11 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"io"
 )
+
+var ErrFileNotFound = errors.New("file not found")
 
 type FileStorer interface {
 	Read(ctx context.Context, filepath string) ([]byte, error)

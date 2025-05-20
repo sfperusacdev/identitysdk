@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -45,6 +46,9 @@ func (l *LocalFileStore) Read(ctx context.Context, filepath string) ([]byte, err
 	fullPath := l.getFullPath(filepath)
 	data, err := os.ReadFile(fullPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrFileNotFound
+		}
 		slog.Error("Failed to read file from local storage",
 			"path", fullPath,
 			"error", err,
