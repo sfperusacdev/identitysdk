@@ -24,6 +24,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
 	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
+	"github.com/sfperusacdev/identitysdk/helpers/signpdf"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/services"
@@ -425,10 +426,19 @@ func (s *Service) Run(opts ...fx.Option) error {
 				},
 			),
 			fx.Provide(services.NewExternalBridgeService),
+			// tools
 			fx.Provide(
 				fx.Annotate(
 					propsprovider.NewSystemPropsPgProvider,
 					fx.As(new(properties.SystemPropsProvider)),
+				),
+				fx.Annotate(
+					signpdf.NewPopplerPDFInspector,
+					fx.As(new(signpdf.PDFInspector)),
+				),
+				fx.Annotate(
+					signpdf.NewPyhankoPDFSigner,
+					fx.As(new(signpdf.PDFSigner)),
 				),
 			),
 			propertiesfx.Module,
