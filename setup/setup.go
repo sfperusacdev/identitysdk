@@ -19,6 +19,7 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/configs"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
@@ -38,7 +39,7 @@ type ServiceDetails struct {
 }
 
 type ServiceOptions struct {
-	configProvider ConfigsProviderFunc
+	configProvider configs.ConfigsProviderFunc
 	details        ServiceDetails
 	migrationsDir  fs.FS
 	propertiesDir  fs.FS
@@ -66,7 +67,7 @@ func WithSystemPropertiesSource(sf fs.FS) ServiceOption {
 	}
 }
 
-func WithConfigProvider(provider ConfigsProviderFunc) ServiceOption {
+func WithConfigProvider(provider configs.ConfigsProviderFunc) ServiceOption {
 	return func(o *ServiceOptions) {
 		if provider == nil {
 			slog.Warn("Service config provider is nil, operation skipped")
@@ -86,7 +87,7 @@ func WithDetails(serviceID, description string) ServiceOption {
 }
 
 type Service struct {
-	configPath *ConfigPath
+	configPath *configs.ConfigPath
 	Command    *cobra.Command
 	options    ServiceOptions
 	version    string
@@ -97,7 +98,7 @@ func NewService(
 	opts ...ServiceOption,
 ) *Service {
 	options := &ServiceOptions{
-		configProvider: DefaultConfigsProviderFunc,
+		configProvider: configs.DefaultConfigsProviderFunc,
 	}
 	for _, apply := range opts {
 		apply(options)
@@ -125,7 +126,7 @@ func NewService(
 			Use:   "config-example",
 			Short: "Generates a base YAML configuration template for the application (config.yml)",
 			Run: func(cmd *cobra.Command, args []string) {
-				data, err := yaml.Marshal(&GeneralServiceConfig{})
+				data, err := yaml.Marshal(&configs.GeneralServiceConfig{})
 				if err != nil {
 					slog.Error("Failed to marsahl yml", "error", err)
 					os.Exit(1)
@@ -234,7 +235,7 @@ func NewService(
 }
 
 func (s *Service) prepareConfigPath(cmd *cobra.Command, args []string) error {
-	configPath := ConfigPath(cmd.Flag("config").Value.String())
+	configPath := configs.ConfigPath(cmd.Flag("config").Value.String())
 	if configPath == "" {
 		return errors.New("the --config file path was not provided or is empty")
 	}
@@ -242,7 +243,7 @@ func (s *Service) prepareConfigPath(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (s *Service) configs() (GeneralServiceConfigProvider, DatabaseConfigProvider, error) {
+func (s *Service) configs() (configs.GeneralServiceConfigProvider, configs.DatabaseConfigProvider, error) {
 	if s.configPath == nil {
 		slog.Error("configPath is nil")
 		return nil, nil, errors.New("config path is nil")
@@ -315,7 +316,7 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 	}
 }
 
-func (s *Service) setupIdentity(c GeneralServiceConfigProvider) error {
+func (s *Service) setupIdentity(c configs.GeneralServiceConfigProvider) error {
 	identitysdk.SetIdentityServer(c.Identity())
 	identitysdk.SetAccessToken(c.IdentityAccessToken())
 
@@ -327,7 +328,7 @@ func (s *Service) setupIdentity(c GeneralServiceConfigProvider) error {
 	return nil
 }
 
-func (s *Service) publishServiceDetails(c GeneralServiceConfigProvider) {
+func (s *Service) publishServiceDetails(c configs.GeneralServiceConfigProvider) {
 	var accessToken = c.IdentityAccessToken()
 	if s.options.details.Name == "" {
 		return
@@ -411,15 +412,15 @@ func (s *Service) Run(opts ...fx.Option) error {
 			opts,
 			fx.Supply(systemProperties),
 			fx.Provide(
-				func() ConfigPath {
+				func() configs.ConfigPath {
 					if s.configPath == nil {
 						return ""
 					}
 					return *s.configPath
 				},
-				func() GeneralServiceConfigProvider { return gsc },
+				func() configs.GeneralServiceConfigProvider { return gsc },
 				func() connection.StorageManager { return connectionManager },
-				func(c GeneralServiceConfigProvider) httpapi.ServeURLString {
+				func(c configs.GeneralServiceConfigProvider) httpapi.ServeURLString {
 					return httpapi.ServeURLString(c.ListenAddress())
 				},
 			),
