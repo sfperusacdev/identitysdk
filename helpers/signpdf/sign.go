@@ -20,6 +20,8 @@ type PyhankoPDFSigner struct {
 	inspector  PDFInspector
 }
 
+var _ PDFSigner = (*PyhankoPDFSigner)(nil)
+
 func NewPyhankoPDFSigner(inspector PDFInspector) *PyhankoPDFSigner {
 	return &PyhankoPDFSigner{
 		pyhankoBin: "pyhanko",
@@ -252,4 +254,13 @@ func (py *PyhankoPDFSigner) Sign(
 		ID:                id,
 		SingnedPDFContent: signedPDF,
 	}, nil
+}
+
+func (py *PyhankoPDFSigner) SignFromFile(ctx context.Context, signName string, pdfPath, certPEM, keyPEM string, box *SignBox) (*SignedPDFResult, error) {
+	pdfData, err := os.ReadFile(pdfPath)
+	if err != nil {
+		slog.Error("failed to read PDF file", "path", pdfPath, "error", err)
+		return nil, err
+	}
+	return py.Sign(ctx, signName, pdfData, certPEM, keyPEM, box)
 }
