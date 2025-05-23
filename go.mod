@@ -1,6 +1,6 @@
 module github.com/sfperusacdev/identitysdk
 
-go 1.23.0
+go 1.23.1
 
 toolchain go1.23.4
 
@@ -26,6 +26,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/user0608/goones v0.10.0
 	github.com/user0608/ifdevmode v0.0.3
+	github.com/user0608/numeroaletras v0.1.1
 	go.uber.org/fx v1.23.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/postgres v1.5.4

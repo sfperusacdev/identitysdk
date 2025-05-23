@@ -25,11 +25,13 @@ import (
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
 	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
 	"github.com/sfperusacdev/identitysdk/helpers/signpdf"
+	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
+	"github.com/user0608/numeroaletras"
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v2"
 )
@@ -425,12 +427,18 @@ func (s *Service) Run(opts ...fx.Option) error {
 					return httpapi.ServeURLString(c.ListenAddress())
 				},
 			),
+
 			fx.Provide(services.NewExternalBridgeService),
 			// tools
+
 			fx.Provide(
 				fx.Annotate(
 					propsprovider.NewSystemPropsPgProvider,
 					fx.As(new(properties.SystemPropsProvider)),
+				),
+				fx.Annotate(
+					numeroaletras.NewNumeroALetras,
+					fx.As(new(sunat.NumeroALetras)),
 				),
 				fx.Annotate(
 					signpdf.NewPopplerPDFInspector,
