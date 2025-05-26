@@ -167,7 +167,7 @@ func (s *S3FileStore) SaveRBatch(ctx context.Context, files map[string]io.Reader
 func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
 	var readers = make(map[string]io.Reader, len(files))
 	for key, value := range files {
-		readers[key] = bytes.NewBuffer(value)
+		readers[key] = bytes.NewReader(value)
 	}
 	return s.SaveRBatch(ctx, readers)
 }
