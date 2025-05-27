@@ -1,7 +1,6 @@
 stamp-styles:
     default:
-        type: text
-        border_width: 1       
+        type: text               
         stamp-text: "%(signer)s\n%(ts)s"      
         background-layout:
           x-align: mid
