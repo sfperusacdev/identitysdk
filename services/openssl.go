@@ -40,12 +40,13 @@ type RequestPayload struct {
 	EmailAddress       string `json:"email_address"`
 }
 
-func (s *ExternalBridgeService) GenCertificate(ctx context.Context, payload RequestPayload) (*Certificate, error) {
+func (s *ExternalBridgeService) IssueCertificate(ctx context.Context, payload RequestPayload) (*Certificate, error) {
 	var domain = identitysdk.Empresa(ctx)
-	return s.GenCertificateWithDomain(ctx, domain, payload)
+	return s.IssueCompanyCertificate(ctx, domain, payload)
 }
 
-func (s *ExternalBridgeService) GenCertificateWithDomain(ctx context.Context, domain string, payload RequestPayload) (*Certificate, error) {
+// IssueCompanyCertificate Issues a new certificate for the given company
+func (s *ExternalBridgeService) IssueCompanyCertificate(ctx context.Context, domain string, payload RequestPayload) (*Certificate, error) {
 	var apiresponse struct {
 		Message string      `json:"message"`
 		Data    Certificate `json:"data"`
@@ -57,10 +58,29 @@ func (s *ExternalBridgeService) GenCertificateWithDomain(ctx context.Context, do
 	}
 	if err := xreq.MakeRequest(ctx,
 		identitysdk.GetIdentityServer(),
-		fmt.Sprintf("/api/v1/certificates/gen/%s", domain),
+		fmt.Sprintf("/api/v1/certificates/issue/%s", domain),
 		xreq.WithMethod(http.MethodPost),
 		xreq.WithAccessToken(identitysdk.GetAccessToken()),
 		xreq.WithRequestBody(&buf),
+		xreq.WithJsonContentType(),
+		xreq.WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
+		return nil, err
+	}
+	return &apiresponse.Data, nil
+}
+
+// GetCompanyCertificate retrieves the existing certificate for the authenticated company.
+func (s *ExternalBridgeService) GetCompanyCertificate(ctx context.Context, domain string) (*Certificate, error) {
+	var apiresponse struct {
+		Message string      `json:"message"`
+		Data    Certificate `json:"data"`
+	}
+	if err := xreq.MakeRequest(ctx,
+		identitysdk.GetIdentityServer(),
+		fmt.Sprintf("/api/v1/certificates/%s", domain),
+		xreq.WithMethod(http.MethodGet),
+		xreq.WithAccessToken(identitysdk.GetAccessToken()),
 		xreq.WithJsonContentType(),
 		xreq.WithUnmarshalResponseInto(&apiresponse),
 	); err != nil {
