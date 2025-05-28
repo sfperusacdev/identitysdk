@@ -30,6 +30,9 @@ type FileCache struct {
 func NewFileCache(baseDir string, maxEntries int, evictInterval time.Duration) (*FileCache, error) {
 	dbName := "filecache_metadata.db"
 	dbPath := filepath.Join(baseDir, dbName)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return nil, err
+	}
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
