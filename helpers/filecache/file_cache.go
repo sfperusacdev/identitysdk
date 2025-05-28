@@ -17,7 +17,7 @@ import (
 var ErrFileNotExists = errors.New("file does not exist in cache")
 
 type FileCache struct {
-	sync.RWMutex
+	m          sync.RWMutex
 	baseDir    string
 	pathsMap   map[string]struct{}
 	maxEntries int
@@ -148,23 +148,23 @@ func (c *FileCache) deleteFileAccessRecord(filename string) error {
 
 func (c *FileCache) exists(filename string) (string, bool) {
 	hashed := GetHashedFilePath(filename)
-	c.RLock()
-	defer c.RUnlock()
+	c.m.RLock()
+	defer c.m.RUnlock()
 	_, found := c.pathsMap[hashed]
 	return filepath.Join(c.baseDir, hashed), found
 }
 
 func (c *FileCache) addToCache(filename string) {
 	hashed := GetHashedFilePath(filename)
-	c.Lock()
-	defer c.Unlock()
+	c.m.Lock()
+	defer c.m.Unlock()
 	c.pathsMap[hashed] = struct{}{}
 }
 
 func (c *FileCache) removeFromCache(filename string) {
 	hashed := GetHashedFilePath(filename)
-	c.Lock()
-	defer c.Unlock()
+	c.m.Lock()
+	defer c.m.Unlock()
 	delete(c.pathsMap, hashed)
 }
 
