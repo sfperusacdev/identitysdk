@@ -2,6 +2,8 @@ package signpdf
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,7 +31,7 @@ func NewPyhankoPDFSigner(inspector PDFInspector) *PyhankoPDFSigner {
 	}
 }
 
-func (py *PyhankoPDFSigner) prepareConfigFile(box *SignBox) (string, func() error, error) {
+func (py *PyhankoPDFSigner) prepareConfigFile(box *SignBox, text string) (string, func() error, error) {
 	var configData []byte
 	var err error
 	var cleanupImg func() error
@@ -41,12 +43,12 @@ func (py *PyhankoPDFSigner) prepareConfigFile(box *SignBox) (string, func() erro
 			return "", nil, fmt.Errorf("failed to store background image: %w", err)
 		}
 
-		configData, err = pyhankoconfig.RenderConfigWithImage(imgPath)
+		configData, err = pyhankoconfig.RenderConfigWithImage(imgPath, text)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to render config with image: %w", err)
 		}
 	} else {
-		configData, err = pyhankoconfig.RenderConfigWithoutImage()
+		configData, err = pyhankoconfig.RenderConfigWithoutImage(text)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to render config without image: %w", err)
 		}
@@ -171,6 +173,21 @@ func (py *PyhankoPDFSigner) ensureBoxDefaults(box *SignBox) {
 	}
 }
 
+func (s *PyhankoPDFSigner) extractCommonName(certPEM string) string {
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil || block.Type != "CERTIFICATE" {
+		slog.Warn("Failed to decode PEM block or invalid certificate type")
+		return ""
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		slog.Warn("Failed to parse certificate", "error", err)
+		return ""
+	}
+	slog.Info("Extracted Common Name from certificate", "commonName", cert.Subject.CommonName)
+	return cert.Subject.CommonName
+}
+
 func (py *PyhankoPDFSigner) Sign(
 	ctx context.Context,
 	signName string,
@@ -192,7 +209,7 @@ func (py *PyhankoPDFSigner) Sign(
 		return nil, fmt.Errorf("failed to store key and certificate: %w", err)
 	}
 
-	configPath, configCleanup, err := py.prepareConfigFile(box)
+	configPath, configCleanup, err := py.prepareConfigFile(box, py.extractCommonName(certPEM))
 	if configCleanup != nil {
 		defer configCleanup()
 	}
