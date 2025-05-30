@@ -24,7 +24,7 @@ func RenderConfigWithoutImage(text string) ([]byte, error) {
 	}
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]string{
-		"stamp-text": text,
+		"stamp_text": text,
 	})
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func RenderConfigWithImage(text string, backgroundPath string) ([]byte, error) {
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]string{
 		"background": backgroundPath,
-		"stamp-text": text,
+		"stamp_text": text,
 	})
 	if err != nil {
 		return nil, err

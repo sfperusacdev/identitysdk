@@ -1,7 +1,7 @@
 stamp-styles:
     default:
         type: text               
-        stamp-text: "{{.stamp-text}}\n%(ts)s"      
+        stamp-text: "{{.stamp_text}}\n%(ts)s"      
         background-layout:
           x-align: mid
           margins:
