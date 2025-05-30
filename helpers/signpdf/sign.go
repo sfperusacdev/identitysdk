@@ -184,7 +184,6 @@ func (s *PyhankoPDFSigner) extractCommonName(certPEM string) string {
 		slog.Warn("Failed to parse certificate", "error", err)
 		return ""
 	}
-	slog.Info("Extracted Common Name from certificate", "commonName", cert.Subject.CommonName)
 	return cert.Subject.CommonName
 }
 
