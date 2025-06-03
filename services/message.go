@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
@@ -244,7 +245,19 @@ type MailRecord struct {
 // GetEmailsByTag searches for emails that have been sent or are queued for sending.
 // The search is filtered using the provided tag, which supports partial matching (e.g., "promo%").
 // The filter applies to the "tags" field, using a LIKE query with a trailing wildcard for broader matches.
-func (s *ExternalBridgeService) GetEmailsByTag(ctx context.Context, tagFilter string) ([]MailRecord, error) {
+func (s *ExternalBridgeService) GetEmailsByTag(ctx context.Context, tagFilter ...string) ([]MailRecord, error) {
+	filtered := []string{}
+	for _, tag := range tagFilter {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		filtered = append(filtered, tag)
+	}
+	if len(filtered) == 0 {
+		return []MailRecord{}, nil
+	}
+
 	domain := identitysdk.Empresa(ctx)
 	token := identitysdk.Token(ctx)
 	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
@@ -252,12 +265,17 @@ func (s *ExternalBridgeService) GetEmailsByTag(ctx context.Context, tagFilter st
 		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
 		return nil, err
 	}
+	queryParams := url.Values{}
+	for _, tag := range filtered {
+		queryParams.Add("q", tag)
+	}
 	var res struct {
 		Data []MailRecord `json:"data"`
 	}
 	if err := xreq.MakeRequest(ctx,
 		baseurl, "/api/v1/_internal/retrive/email",
 		xreq.WithAuthorization(token),
+		xreq.WithQueryParams(queryParams),
 		xreq.WithUnmarshalResponseInto(&res),
 	); err != nil {
 		slog.Error("Failed to retrieve Emails",
@@ -293,7 +311,19 @@ type SMSRecord struct {
 // GetMessagesByTag searches for SMS messages that have been sent or are queued for sending.
 // The search is filtered using the provided tag, which supports partial matching (e.g., "alert%").
 // The filter applies to the "tags" field, using a LIKE query with a trailing wildcard for broader matches.
-func (s *ExternalBridgeService) GetMessagesByTag(ctx context.Context, tagFilter string) ([]SMSRecord, error) {
+func (s *ExternalBridgeService) GetMessagesByTag(ctx context.Context, tagFilter ...string) ([]SMSRecord, error) {
+	filtered := []string{}
+	for _, tag := range tagFilter {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		filtered = append(filtered, tag)
+	}
+	if len(filtered) == 0 {
+		return []SMSRecord{}, nil
+	}
+
 	domain := identitysdk.Empresa(ctx)
 	token := identitysdk.Token(ctx)
 	baseurl, err := identitysdk.GetMensajeriaServiceURL(ctx, domain)
@@ -301,12 +331,17 @@ func (s *ExternalBridgeService) GetMessagesByTag(ctx context.Context, tagFilter 
 		slog.Error("Failed to retrieve 'mensajeria' service URL", "domain", domain, "error", err)
 		return nil, err
 	}
+	queryParams := url.Values{}
+	for _, tag := range filtered {
+		queryParams.Add("q", tag)
+	}
 	var res struct {
 		Data []SMSRecord `json:"data"`
 	}
 	if err := xreq.MakeRequest(ctx,
 		baseurl, "/api/v1/_internal/retrive/sms",
 		xreq.WithAuthorization(token),
+		xreq.WithQueryParams(queryParams),
 		xreq.WithUnmarshalResponseInto(&res),
 	); err != nil {
 		slog.Error("Failed to retrieve SMS",
