@@ -43,7 +43,7 @@ func (py *PyhankoPDFSigner) prepareConfigFile(box *SignBox, text string) (string
 			return "", nil, fmt.Errorf("failed to store background image: %w", err)
 		}
 
-		configData, err = pyhankoconfig.RenderConfigWithImage(imgPath, text)
+		configData, err = pyhankoconfig.RenderConfigWithImage(text, imgPath)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to render config with image: %w", err)
 		}

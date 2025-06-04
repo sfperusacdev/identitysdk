@@ -3,7 +3,10 @@ package pyhankoconfig
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"html/template"
+	"log/slog"
+	"os"
 	"strings"
 )
 
@@ -34,6 +37,16 @@ func RenderConfigWithoutImage(text string) ([]byte, error) {
 }
 
 func RenderConfigWithImage(text string, backgroundPath string) ([]byte, error) {
+	info, err := os.Stat(backgroundPath)
+	if err != nil {
+		slog.Error("failed to stat background path", slog.String("path", backgroundPath), slog.Any("error", err))
+		return nil, fmt.Errorf("background path error: %w", err)
+	}
+	if info.IsDir() {
+		slog.Error("background path is a directory", slog.String("path", backgroundPath))
+		return nil, fmt.Errorf("background path is a directory, not a file")
+	}
+
 	tmpl, err := template.New("withImage").Parse(configWithImage)
 	if err != nil {
 		return nil, err
