@@ -268,6 +268,18 @@ func Empresa(c context.Context, suffix ...string) string {
 	return domain + suff
 }
 
+func EmpresaList(ctx context.Context, rawValues []string) []string {
+	var normalized []string
+	for _, v := range rawValues {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		normalized = append(normalized, Empresa(ctx, v))
+	}
+	return normalized
+}
+
 // Deprecated: ReferenciaEmpresa a sido deprecado, usar IntegracionExternaCodigo
 // los nuevos metodos estan integrados en el servicio de ExternalBridgeService
 func ReferenciaEmpresa(c context.Context) string {
@@ -311,6 +323,18 @@ func Sucursal(c context.Context, suffix ...string) string {
 		sucursal = "####sucursal-no-found####"
 	}
 	return Empresa(c, append([]string{sucursal}, values...)...)
+}
+
+func SucursalList(ctx context.Context, rawValues []string) []string {
+	var normalized []string
+	for _, v := range rawValues {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		normalized = append(normalized, Sucursal(ctx, v))
+	}
+	return normalized
 }
 
 func Token(c context.Context) string {
