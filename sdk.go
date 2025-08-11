@@ -2,8 +2,11 @@ package identitysdk
 
 import (
 	"context"
+	"log"
 	"log/slog"
+	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sfperusacdev/identitysdk/entities"
@@ -18,6 +21,7 @@ const jwt_claims_username = keyType("jwt_claims_username-key")
 const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
 const domain_key = keyType("domain_key")
+const sucursal_codigo_key = keyType("sucursal_codigo_key")
 
 type JwtMiddleware echo.MiddlewareFunc
 
@@ -150,8 +154,6 @@ func BuildPublicClientContext(ctx context.Context, token string, data *entities.
 	newctx = context.WithValue(newctx, jwt_claims_username, data.Jwt.Username)
 	return newctx
 }
-
-const sucursal_codigo_key = keyType("sucursal_codigo_key")
 
 // Este middleware verifica que el query param `sucursal` no esté vacío.
 // Si el código de sucursal está vacío, devuelve un error de tipo `errs.Bad`.
@@ -346,13 +348,37 @@ func Token(c context.Context) string {
 	return token
 }
 
-func CopyContext(ctx context.Context) context.Context {
+func CloneContext(ctx context.Context) context.Context {
 	values, ok := JwtClaims(ctx)
 	if !ok {
 		return context.Background()
 	}
 	var newCtx = context.WithValue(context.Background(), jwt_claims_key, values)
 	newCtx = context.WithValue(newCtx, domain_key, Empresa(ctx))
+	newCtx = context.WithValue(newCtx, jwt_claims_username, Username(ctx))
 	newCtx = context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
-	return context.WithValue(newCtx, jwt_token_key, Token(ctx))
+	newCtx = context.WithValue(newCtx, jwt_token_key, Token(ctx))
+	if session, ok := ReadSession(ctx); ok {
+		newCtx = context.WithValue(newCtx, jwt_session_key, session)
+	}
+	return newCtx
+}
+
+func FireAndForget(ctx context.Context, f func(ctx context.Context), wg ...*sync.WaitGroup) {
+	if len(wg) > 0 && wg[0] != nil {
+		wg[0].Add(1)
+	}
+	go func() {
+		if len(wg) > 0 && wg[0] != nil {
+			defer wg[0].Done()
+		}
+
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("RECOVERED FROM PANIC (safe to ignore): %v", err)
+				log.Println(string(debug.Stack()))
+			}
+		}()
+		f(CloneContext(ctx))
+	}()
 }
