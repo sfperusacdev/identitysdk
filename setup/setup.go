@@ -20,6 +20,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
+	"github.com/sfperusacdev/identitysdk/helpers/facecropper"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
@@ -430,6 +431,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 
 			fx.Provide(services.NewExternalBridgeService),
 			// tools
+			fx.Provide(facecropper.NewFaceCropService),
 
 			fx.Provide(
 				fx.Annotate(
