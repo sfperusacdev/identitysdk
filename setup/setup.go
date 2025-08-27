@@ -22,6 +22,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/configs"
 	"github.com/sfperusacdev/identitysdk/helpers/docxtopdf"
 	"github.com/sfperusacdev/identitysdk/helpers/facecropper"
+	"github.com/sfperusacdev/identitysdk/helpers/fotocheck"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
@@ -434,6 +435,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			// tools
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
+			fx.Provide(fotocheck.NewFotocheckBuilder),
 
 			fx.Provide(
 				fx.Annotate(
