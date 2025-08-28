@@ -15,6 +15,7 @@ type GeneralServiceConfigProvider interface {
 	ListenAddress() string
 	Identity() string
 	IdentityAccessToken() string
+	CacheDir() string
 }
 
 type DatabaseConfigProvider interface {
@@ -32,6 +33,7 @@ type GeneralServiceConfig struct {
 	ListenAddressValue       string         `mapstructure:"address" yaml:"address"`
 	IdentityValue            string         `mapstructure:"identity" yaml:"identity"`
 	IdentityAccessTokenValue string         `mapstructure:"identity_access_token" yaml:"identity_access_token"`
+	CacheDirVal              string         `mapstructure:"cache_dir" yaml:"cache_dir"`
 	DatabaseEntity           DatabaseConfig `mapstructure:"database" yaml:"database"`
 }
 
@@ -58,6 +60,14 @@ func (c *GeneralServiceConfig) Identity() string {
 		c.IdentityValue = "https:api.identity2.sfperusac.com"
 	}
 	return c.IdentityValue
+}
+
+// CacheDir implements GeneralServiceConfigProvider.
+func (c *GeneralServiceConfig) CacheDir() string {
+	if c.CacheDirVal == "" {
+		return ".cache"
+	}
+	return strings.TrimSpace(c.CacheDirVal)
 }
 
 // IdentityAccessToken implements GeneralServiceConfigProvider.
