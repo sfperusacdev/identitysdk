@@ -32,6 +32,7 @@ type FotocheckImage struct {
 	Position
 	Size
 	Rotation float64 // in degrees
+	Circle   bool
 }
 
 type BarcodeType uint

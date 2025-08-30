@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"image"
 	"io"
 	"log/slog"
 	"strings"
@@ -51,14 +50,6 @@ func (b *FotocheckBuilder) renderTemplate(tplText string, data any) (string, err
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 	return buf.String(), nil
-}
-
-func (b *FotocheckBuilder) GetDimensions(r io.Reader) (width int, height int, err error) {
-	cfg, _, err := image.DecodeConfig(r)
-	if err != nil {
-		return 0, 0, err
-	}
-	return cfg.Width, cfg.Height, nil
 }
 
 func (b *FotocheckBuilder) totalPages(itemCount, rowsPerPage, colsPerPage int) int {
@@ -171,7 +162,16 @@ MAIN_LOOP:
 						var y = col + v.Y*data.HeightMM
 						var width = v.Width * data.WidthMM
 						var height = v.Height * data.HeightMM
-						imageHolder, err := gopdf.ImageHolderByBytes(v.Bytes)
+						var imageBytes = v.Bytes
+						if v.Circle {
+							cropped, err := circularCropBytes(imageBytes)
+							if err != nil {
+								slog.Warn("failed to apply circular crop", "error", err)
+							} else {
+								imageBytes = cropped
+							}
+						}
+						imageHolder, err := gopdf.ImageHolderByBytes(imageBytes)
 						if err != nil {
 							slog.Error("failed to create image holder", "index", idx, "error", err)
 							return fmt.Errorf("failed to create image holder at index %d: %w", idx, err)
