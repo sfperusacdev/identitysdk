@@ -22,6 +22,7 @@ const jwt_session_key = keyType("jwt-session-context-key")
 const jwt_token_key = keyType("jwt-token-context-key")
 const domain_key = keyType("domain_key")
 const sucursal_codigo_key = keyType("sucursal_codigo_key")
+const request_origin_key = keyType("request_origin")
 
 type JwtMiddleware echo.MiddlewareFunc
 
@@ -42,6 +43,10 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return answer.Err(c, errs.BadRequestDirect("[close] session invalida"))
 		}
 		var newContext = BuildContext(c.Request().Context(), token, data)
+
+		requestOrigin := c.Request().Header.Get("X-Origin")
+		newContext = context.WithValue(newContext, request_origin_key, requestOrigin)
+
 		c.SetRequest(c.Request().WithContext(newContext))
 		return next(c)
 	}
@@ -77,6 +82,10 @@ func CheckApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return answer.Err(c, errs.BadRequestDirect("[close] api key session invalida"))
 		}
 		var newContext = BuildApikeyContext(c.Request().Context(), apikey, &data.Apikey)
+
+		requestOrigin := c.Request().Header.Get("X-Origin")
+		newContext = context.WithValue(newContext, request_origin_key, requestOrigin)
+
 		c.SetRequest(c.Request().WithContext(newContext))
 		return next(c)
 	}
@@ -89,6 +98,7 @@ type JwtPublicClientMiddleware echo.MiddlewareFunc
 
 func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+
 		token := c.Request().Header.Get("Authorization")
 		if token == "" {
 			token = c.QueryParam("token")
@@ -104,6 +114,10 @@ func CheckJwtPublicClientMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return answer.Err(c, errs.BadRequestDirect("[close] session invalida"))
 		}
 		var newContext = BuildPublicClientContext(c.Request().Context(), token, data)
+
+		requestOrigin := c.Request().Header.Get("X-Origin")
+		newContext = context.WithValue(newContext, request_origin_key, requestOrigin)
+
 		c.SetRequest(c.Request().WithContext(newContext))
 		return next(c)
 	}
@@ -202,6 +216,14 @@ func ReadSession(c context.Context) (entities.Session, bool) {
 		slog.Error("tokendata assert error")
 	}
 	return v, ok
+}
+
+func RequestOrigin(c context.Context) string {
+	origin, ok := c.Value(request_origin_key).(string)
+	if ok && origin != "" {
+		return origin
+	}
+	return ":unknown"
 }
 
 func Username(c context.Context) string {
