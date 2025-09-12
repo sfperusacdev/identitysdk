@@ -27,6 +27,22 @@ type FotocheckText struct {
 	Position
 }
 
+type ParagraphBoxAlign uint8
+
+const (
+	ParagraphBoxAlignLeft ParagraphBoxAlign = iota
+	ParagraphBoxAlignCenter
+	ParagraphBoxAlignRight
+)
+
+type FotocheckParagraphBox struct {
+	FotocheckText
+	Align       ParagraphBoxAlign // left=0, center=1, right=2
+	Width       float64
+	LineSpacing float64
+	ShowBorder  bool
+}
+
 type FotocheckImage struct {
 	Bytes []byte
 	Position
@@ -35,7 +51,7 @@ type FotocheckImage struct {
 	Circle   bool
 }
 
-type BarcodeType uint
+type BarcodeType uint8
 
 const (
 	BarcodeTypeQR BarcodeType = iota
@@ -58,6 +74,7 @@ type FotocheckElement interface {
 var _ FotocheckElement = (*FotocheckImage)(nil)
 var _ FotocheckElement = (*FotocheckText)(nil)
 var _ FotocheckElement = (*FotocheckBarcode)(nil)
+var _ FotocheckElement = (*FotocheckParagraphBox)(nil)
 
 func (FotocheckImage) isFotocheckElement()   {}
 func (FotocheckText) isFotocheckElement()    {}

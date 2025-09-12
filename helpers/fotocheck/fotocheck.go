@@ -12,6 +12,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/sfperusacdev/identitysdk/helpers/fotocheck/pdfutils"
 	"github.com/signintech/gopdf"
 )
 
@@ -144,7 +145,6 @@ MAIN_LOOP:
 						if v.FontSize > 0 {
 							fontsize = v.FontSize
 						}
-						pdf.SetXY(x, y)
 						if err := pdf.SetFontSize(fontsize); err != nil {
 							return fmt.Errorf("failed to set font size at index %d: %w", idx, err)
 						}
@@ -153,10 +153,45 @@ MAIN_LOOP:
 						} else {
 							pdf.SetTextColor(0, 0, 0)
 						}
+						pdf.SetXY(x, y)
 						if err := pdf.Text(text); err != nil {
 							return fmt.Errorf("failed to write text at index %d: %w", idx, err)
 						}
 
+					case FotocheckParagraphBox:
+						text, err := b.renderTemplate(v.Text, item.Data)
+						if err != nil {
+							return fmt.Errorf("failed to render template at index %d: %w", idx, err)
+						}
+						var x = row + v.X*data.WidthMM
+						var y = col + v.Y*data.HeightMM
+						var fontsize = 10.0
+						if v.FontSize > 0 {
+							fontsize = v.FontSize
+						}
+						if err := pdf.SetFontSize(fontsize); err != nil {
+							return fmt.Errorf("failed to set font size at index %d: %w", idx, err)
+						}
+						if !v.Color.IsZero() {
+							pdf.SetTextColor(v.Color.R, v.Color.G, v.Color.R)
+						} else {
+							pdf.SetTextColor(0, 0, 0)
+						}
+						var lineSpacing = v.LineSpacing
+						if lineSpacing < 0 {
+							lineSpacing = 1
+						}
+						var width = v.Width * data.WidthMM
+						if err := pdfutils.DrawTextInBox(
+							pdf,
+							x, y, width,
+							text,
+							uint(v.Align),
+							lineSpacing,
+							v.ShowBorder,
+						); err != nil {
+							return fmt.Errorf("failed to write text box at index %d: %w", idx, err)
+						}
 					case FotocheckImage:
 						var x = row + v.X*data.WidthMM
 						var y = col + v.Y*data.HeightMM
