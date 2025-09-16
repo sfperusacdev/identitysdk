@@ -41,11 +41,21 @@ func (b *FotocheckBuilder) renderTemplate(tplText string, data any) (string, err
 	tpl := b.base.Lookup(tplID)
 	if tpl == nil {
 		var err error
-		tpl, err = b.base.New(tplID).Parse(tplText)
+		tpl, err = b.base.New(tplID).Funcs(template.FuncMap{
+			"abbr":       Abbreviate,
+			"abbrIfLen":  AbbreviateIfLonger,
+			"lower":      ToLower,
+			"upper":      ToUpper,
+			"capitalize": Capitalize,
+			"clean":      CleanWhitespace,
+			"sanitize":   RemoveInvisibleChars,
+			"normalize":  NormalizeText,
+		}).Parse(tplText)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse template: %w", err)
 		}
 	}
+
 	var buf bytes.Buffer
 	if err := tpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("failed to execute template: %w", err)
