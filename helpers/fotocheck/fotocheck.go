@@ -62,6 +62,20 @@ func (b *FotocheckBuilder) totalPages(itemCount, rowsPerPage, colsPerPage int) i
 }
 
 func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([]byte, error) {
+	if data.PageWidthMM == 0 {
+		data.PageWidthMM = 210
+	}
+	if data.PageHeightMM == 0 {
+		data.PageHeightMM = 297
+	}
+
+	if data.MinGapX == 0 {
+		data.PageHeightMM = 15
+	}
+	if data.MinGapY == 0 {
+		data.PageHeightMM = 5
+	}
+
 	if data.HeightMM == 0 || data.WidthMM == 0 {
 		return nil, errors.New("invalid dimensions: height and width must be greater than 0")
 	}
@@ -74,18 +88,21 @@ func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([
 	pdf := &gopdf.GoPdf{}
 	defer pdf.Close()
 	pdf.Start(gopdf.Config{
-		Unit:     gopdf.UnitMM,
-		PageSize: *gopdf.PageSizeA4,
+		Unit: gopdf.UnitMM,
+		PageSize: gopdf.Rect{
+			H: data.PageHeightMM,
+			W: data.PageWidthMM,
+		},
 	})
 	pdf.AddTTFFontData("futura", futuraFont)
 	pdf.SetFont("futura", "", 14)
 
-	rows, err := XPositions(data.WidthMM)
+	rows, err := XPositions(data.PageWidthMM, data.WidthMM, data.MinGapX)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, err
 	}
-	cols, err := YPositions(data.HeightMM)
+	cols, err := YPositions(data.PageHeightMM, data.HeightMM, data.MinGapY)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, err

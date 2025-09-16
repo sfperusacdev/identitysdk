@@ -86,6 +86,10 @@ type Fotocheck struct {
 }
 
 type FotocheckData struct {
+	PageWidthMM   float64
+	PageHeightMM  float64
+	MinGapX       float64
+	MinGapY       float64
 	WidthMM       float64
 	HeightMM      float64
 	BackgroundJPG []byte

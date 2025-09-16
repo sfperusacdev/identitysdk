@@ -5,12 +5,6 @@ import (
 	"math"
 )
 
-const minGapX float64 = 15         // Minimum horizontal gap in mm
-const minGapY float64 = 2          // Minimum vertical gap in mm
-const a4Width float64 = 210        // A4 width in mm
-const a4Height float64 = 297       // A4 height in mm
-const minElementWidth float64 = 10 // Minimum element width in mm
-
 var ErrElementTooWide = errors.New("element width exceeds container size")
 var ErrElementTooNarrow = errors.New("element width is below minimum, min=10mm")
 var ErrGapTooSmall = errors.New("gap between elements is below minimum required")
@@ -20,7 +14,7 @@ var ErrGapTooSmall = errors.New("gap between elements is below minimum required"
 // ensuring at least `gapMin` space between them.
 //
 // `length` must be greater than or equal to `width + gapMin`, otherwise an error is returned.
-
+const minElementWidth float64 = 10 // Minimum element width in mm
 func segments(length float64, width float64, gapMin float64) ([]float64, error) {
 	if width < minElementWidth {
 		return nil, ErrElementTooNarrow
@@ -47,12 +41,12 @@ func segments(length float64, width float64, gapMin float64) ([]float64, error) 
 
 // xPositions returns the horizontal starting positions for elements of width `w`,
 // fitting as many as possible in an A4 page width, respecting minimum horizontal gap.
-func XPositions(w float64) ([]float64, error) {
-	return segments(a4Width, w, minGapX)
+func XPositions(pageWidth, w, minGap float64) ([]float64, error) {
+	return segments(pageWidth, w, minGap)
 }
 
 // yPositions returns the vertical starting positions for elements of height `h`,
 // fitting as many as possible in an A4 page height, respecting minimum vertical gap.
-func YPositions(h float64) ([]float64, error) {
-	return segments(a4Height, h, minGapY)
+func YPositions(pageHeight, h, minGap float64) ([]float64, error) {
+	return segments(pageHeight, h, minGap)
 }

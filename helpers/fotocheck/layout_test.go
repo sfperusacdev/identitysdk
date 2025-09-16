@@ -7,6 +7,8 @@ import (
 )
 
 func TestSegments(t *testing.T) {
+	const a4Width float64 = 210
+	const minGapX float64 = 15
 	tests := []struct {
 		name  string
 		width float64
