@@ -46,6 +46,7 @@ func (b *FotocheckBuilder) renderTemplate(tplText string, data any) (string, err
 			"abbrIfLen":  AbbreviateIfLonger,
 			"lower":      ToLower,
 			"upper":      ToUpper,
+			"join":       JoinString,
 			"capitalize": Capitalize,
 			"clean":      CleanWhitespace,
 			"sanitize":   RemoveInvisibleChars,

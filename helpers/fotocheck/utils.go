@@ -79,3 +79,7 @@ func RemoveInvisibleChars(s string) string {
 func NormalizeText(s string) string {
 	return CleanWhitespace(RemoveInvisibleChars(s))
 }
+
+func JoinString(s ...string) string {
+	return strings.Join(s, " ")
+}
