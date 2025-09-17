@@ -122,9 +122,9 @@ func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([
 	if pages == 0 {
 		return nil, errors.New("invalid layout: calculated total pages is 0")
 	}
-
-	b.buildPdf(pdf, data, pages, cols, rows)
-
+	if err := b.buildPdf(pdf, data, pages, cols, rows); err != nil {
+		return nil, err
+	}
 	var doc bytes.Buffer
 	if _, err := pdf.WriteTo(&doc); err != nil {
 		slog.Error("failed to write PDF to buffer", "error", err)
@@ -165,7 +165,8 @@ MAIN_LOOP:
 					case FotocheckText:
 						text, err := b.renderTemplate(v.Text, item.Data)
 						if err != nil {
-							return fmt.Errorf("failed to render template at index %d: %w", idx, err)
+							slog.Warn("failed to render template", "idx", idx, "error", err)
+							continue
 						}
 						var x = row + v.X*data.WidthMM
 						var y = col + v.Y*data.HeightMM
@@ -189,7 +190,8 @@ MAIN_LOOP:
 					case FotocheckParagraphBox:
 						text, err := b.renderTemplate(v.Text, item.Data)
 						if err != nil {
-							return fmt.Errorf("failed to render template at index %d: %w", idx, err)
+							slog.Warn("failed to render template", "idx", idx, "error", err)
+							continue
 						}
 						var x = row + v.X*data.WidthMM
 						var y = col + v.Y*data.HeightMM
@@ -260,7 +262,8 @@ MAIN_LOOP:
 						if strings.TrimSpace(v.Value) != "" {
 							text, err := b.renderTemplate(strings.TrimSpace(v.Value), item.Data)
 							if err != nil {
-								return fmt.Errorf("failed to render template at index %d: %w", idx, err)
+								slog.Warn("failed to render template", "idx", idx, "error", err)
+								continue
 							}
 
 							var barcodeImg io.Reader
