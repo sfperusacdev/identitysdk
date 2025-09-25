@@ -108,12 +108,12 @@ func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([
 	pdf.AddTTFFontData("futura", futuraFont)
 	pdf.SetFont("futura", "", 14)
 
-	rows, err := XPositions(data.PageWidthMM, data.WidthMM, data.MinGapX)
+	rows, err := segments(data.PageWidthMM, data.WidthMM, data.MinGapX, data.PadStartX, data.PadEndX)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, err
 	}
-	cols, err := YPositions(data.PageHeightMM, data.HeightMM, data.MinGapY)
+	cols, err := segments(data.PageHeightMM, data.HeightMM, data.MinGapY, data.PadStartY, data.PadEndY)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, err

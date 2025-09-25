@@ -5,48 +5,56 @@ import (
 	"math"
 )
 
-var ErrElementTooWide = errors.New("element width exceeds container size")
-var ErrElementTooNarrow = errors.New("element width is below minimum, min=10mm")
-var ErrGapTooSmall = errors.New("gap between elements is below minimum required")
+var ErrInvalidLength = errors.New("length must be greater than 0")
+var ErrInvalidWidth = errors.New("width must be greater than 0")
+var ErrInvalidGap = errors.New("gap must be greater or equal to 0")
+var ErrInvalidPadding = errors.New("padding must be greater or equal to 0")
+var ErrNotEnoughSpace = errors.New("not enough space for elements with given paddings and gap")
 
-// segments receives a container length `length` and an element width `width`,
-// and returns the starting X positions of as many elements as can fit,
-// ensuring at least `gapMin` space between them.
-//
-// `length` must be greater than or equal to `width + gapMin`, otherwise an error is returned.
-const minElementWidth float64 = 10 // Minimum element width in mm
-func segments(length float64, width float64, gapMin float64) ([]float64, error) {
-	if width < minElementWidth {
-		return nil, ErrElementTooNarrow
+// segments calcula posiciones X iniciales para elementos dentro de un contenedor.
+// length: longitud total del contenedor (>=0)
+// width: ancho de cada elemento (>0)
+// gapMin: separación mínima entre elementos (>=0)
+// padStart: espacio al inicio (>=0)
+// padEnd: espacio al final (>=0)
+func segments(length, width, gapMin, padStart, padEnd float64) ([]float64, error) {
+	if length <= 0 {
+		return nil, ErrInvalidLength
+	}
+	if width <= 0 {
+		return nil, ErrInvalidWidth
+	}
+	if gapMin < 0 {
+		return nil, ErrInvalidGap
+	}
+	if padStart < 0 || padEnd < 0 {
+		return nil, ErrInvalidPadding
 	}
 
-	n := math.Trunc(length / (width + gapMin))
+	usable := length - padStart - padEnd
+	if usable < width {
+		return nil, ErrNotEnoughSpace
+	}
+
+	// número máximo de elementos posibles con el gap mínimo
+	n := math.Floor((usable + gapMin) / (width + gapMin))
 	if n <= 0 {
-		return nil, ErrElementTooWide
+		return nil, ErrNotEnoughSpace
 	}
 
-	gap := math.Trunc((length - n*width) / (n + 1))
-	if gap < math.Trunc(gapMin/2) {
-		return nil, ErrGapTooSmall
+	// recalcular gap real distribuyendo el espacio sobrante
+	totalWidth := n*width + (n-1)*gapMin
+	freeSpace := usable - totalWidth
+	gap := gapMin
+	if n > 1 {
+		gap += freeSpace / float64(n-1)
 	}
 
 	pos := make([]float64, int(n))
-	x := gap
+	x := padStart
 	for i := 0; i < int(n); i++ {
 		pos[i] = x
 		x += width + gap
 	}
 	return pos, nil
-}
-
-// xPositions returns the horizontal starting positions for elements of width `w`,
-// fitting as many as possible in an A4 page width, respecting minimum horizontal gap.
-func XPositions(pageWidth, w, minGap float64) ([]float64, error) {
-	return segments(pageWidth, w, minGap)
-}
-
-// yPositions returns the vertical starting positions for elements of height `h`,
-// fitting as many as possible in an A4 page height, respecting minimum vertical gap.
-func YPositions(pageHeight, h, minGap float64) ([]float64, error) {
-	return segments(pageHeight, h, minGap)
 }
