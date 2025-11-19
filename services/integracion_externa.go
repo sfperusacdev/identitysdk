@@ -41,7 +41,32 @@ func (s *ExternalBridgeService) IntegracionExternaCodigo(ctx context.Context, co
 		return "", err
 	}
 	integracioncache.DefaultCache.Set(ctx, company, apiresponse.Data)
-	return apiresponse.Data.ExternalReff, nil
+	return strings.TrimSpace(apiresponse.Data.ExternalReff), nil
+}
+
+// IntegracionExternaSucursalCodigo devuelve el codigo de la sucursal en el sistema externo
+func (s *ExternalBridgeService) IntegracionExternaSucursalCodigo(ctx context.Context, company, company_branch string) (string, error) {
+	{ // variable de entorno, solo para propositos de debug
+		var debugValue = os.Getenv("DEBUG_OVERRIDE_INTEGRATION_EXTERNAL_BRANCH_CODE")
+		if debugValue != "" {
+			return debugValue, nil
+		}
+	}
+	var baseUrl = identitysdk.GetIdentityServer()
+	var enpointPath = fmt.Sprintf("/v1/get-external-info-empresa-sucursal/%s/%s", company, company_branch)
+	var apiresponse struct {
+		Message string `json:"message"`
+		Data    struct {
+			ExternalReff string `json:"external_reff"`
+		} `json:"data"`
+	}
+	if err := xreq.MakeRequest(ctx,
+		baseUrl, enpointPath,
+		xreq.WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(apiresponse.Data.ExternalReff), nil
 }
 
 func (s *ExternalBridgeService) integracionExternaURlSplit(val string) (string, bool) {
