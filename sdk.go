@@ -292,6 +292,17 @@ func Empresa(c context.Context, suffix ...string) string {
 	return domain + suff
 }
 
+func Empresa_Sucursal(c context.Context) (string, string) {
+	empresa := Empresa(c)
+
+	sucursal := "####sucursal-no-found####"
+	if v, ok := c.Value(sucursal_codigo_key).(string); ok {
+		sucursal = RemovePrefix(v)
+	}
+
+	return empresa, sucursal
+}
+
 func EmpresaList(ctx context.Context, rawValues []string) []string {
 	var normalized []string
 	for _, v := range rawValues {
