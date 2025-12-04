@@ -22,11 +22,11 @@ require (
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/signintech/gopdf v0.33.0
-	github.com/spf13/cast v1.8.0
+	github.com/spf13/cast v1.10.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/user0608/goones v0.10.0
+	github.com/user0608/goones v0.12.0
 	github.com/user0608/ifdevmode v0.0.3
 	github.com/user0608/numeroaletras v0.1.1
 	go.uber.org/fx v1.23.0
