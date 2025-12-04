@@ -7,29 +7,31 @@ import (
 )
 
 type Turno struct {
-	Codigo    string
-	InicioStr string
-	FinStr    string
+	Codigo      string `json:"codigo"`
+	Descripcion string `json:"descripcion"`
+	InicioStr   string `json:"inicio_str"`
+	FinStr      string `json:"fin_str"`
 }
 
 type turnoParsed struct {
-	Codigo string
-	Start  time.Duration
-	End    time.Duration
+	Codigo    string
+	Start     time.Duration
+	End       time.Duration
+	_Original Turno
 }
 
 type Segmentable interface {
 	GetStartTime() time.Time
 	GetEndTime() time.Time
-	NewSegment(shiftCode string, start, end time.Time) Segmentable
+	NewSegment(turno Turno, start, end time.Time) Segmentable
 }
 
 func preprocesarTurnos(turnos []Turno) []turnoParsed {
 	parsed := make([]turnoParsed, 0, len(turnos))
 
 	for _, t := range turnos {
-		hi, err1 := time.Parse("15:04:05", t.InicioStr)
-		hf, err2 := time.Parse("15:04:05", t.FinStr)
+		hi, err1 := time.Parse(time.TimeOnly, t.InicioStr)
+		hf, err2 := time.Parse(time.TimeOnly, t.FinStr)
 		if err1 != nil || err2 != nil {
 			continue
 		}
@@ -43,9 +45,10 @@ func preprocesarTurnos(turnos []Turno) []turnoParsed {
 			time.Duration(hf.Second())*time.Second
 
 		parsed = append(parsed, turnoParsed{
-			Codigo: t.Codigo,
-			Start:  startDur,
-			End:    endDur,
+			Codigo:    t.Codigo,
+			Start:     startDur,
+			End:       endDur,
+			_Original: t,
 		})
 	}
 
@@ -85,8 +88,9 @@ func segmentarPorTurnosParsed[T Segmentable](turnos []turnoParsed, origen T, hol
 	endDay := truncMidnight(globalEnd)
 
 	type wrap struct {
-		seg    T
-		codigo string
+		seg       T
+		codigo    string
+		_Original Turno
 	}
 
 	var wraps []wrap
@@ -105,7 +109,7 @@ func segmentarPorTurnosParsed[T Segmentable](turnos []turnoParsed, origen T, hol
 			segEnd := minTime(globalEnd, shiftEnd)
 
 			if segStart.Before(segEnd) {
-				segI := origen.NewSegment(pt.Codigo, segStart, segEnd)
+				segI := origen.NewSegment(pt._Original, segStart, segEnd)
 				if segI == nil {
 					continue
 				}
@@ -113,7 +117,7 @@ func segmentarPorTurnosParsed[T Segmentable](turnos []turnoParsed, origen T, hol
 				if !ok {
 					continue
 				}
-				wraps = append(wraps, wrap{seg: seg, codigo: pt.Codigo})
+				wraps = append(wraps, wrap{seg: seg, codigo: pt.Codigo, _Original: pt._Original})
 			}
 		}
 	}
@@ -131,7 +135,7 @@ func segmentarPorTurnosParsed[T Segmentable](turnos []turnoParsed, origen T, hol
 		tailDur := last.seg.GetEndTime().Sub(last.seg.GetStartTime())
 
 		if tailDur > 0 && tailDur <= holgura {
-			mergedI := origen.NewSegment(prev.codigo, prev.seg.GetStartTime(), last.seg.GetEndTime())
+			mergedI := origen.NewSegment(prev._Original, prev.seg.GetStartTime(), last.seg.GetEndTime())
 			if mergedI != nil {
 				if merged, ok := mergedI.(T); ok {
 					wraps[lastIdx-1] = wrap{seg: merged, codigo: prev.codigo}
