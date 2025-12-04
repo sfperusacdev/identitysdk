@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"net/url"
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/utils/turnos"
@@ -34,6 +35,7 @@ func (s *ExternalBridgeService) Turnos(ctx context.Context) ([]turnos.Turno, err
 		baseURL, endpoint,
 		xreq.WithAuthorization(token),
 		xreq.WithUnmarshalResponseInto(&response),
+		xreq.WithQueryParams(url.Values{"utc": []string{"1"}}),
 	); err != nil {
 		return nil, err
 	}
