@@ -7,10 +7,11 @@ import (
 )
 
 type Turno struct {
-	Codigo      string `json:"codigo"`
-	Descripcion string `json:"descripcion"`
-	InicioStr   string `json:"inicio_str"`
-	FinStr      string `json:"fin_str"`
+	Codigo           string `json:"codigo"`
+	Descripcion      string `json:"descripcion"`
+	Inicio           string `json:"inicio"`
+	Fin              string `json:"fin"`
+	RefereciaExterna string `json:"referecia_externa"`
 }
 
 type turnoParsed struct {
@@ -30,8 +31,8 @@ func preprocesarTurnos(turnos []Turno) []turnoParsed {
 	parsed := make([]turnoParsed, 0, len(turnos))
 
 	for _, t := range turnos {
-		hi, err1 := time.Parse(time.TimeOnly, t.InicioStr)
-		hf, err2 := time.Parse(time.TimeOnly, t.FinStr)
+		hi, err1 := time.Parse(time.TimeOnly, t.Inicio)
+		hf, err2 := time.Parse(time.TimeOnly, t.Fin)
 		if err1 != nil || err2 != nil {
 			continue
 		}

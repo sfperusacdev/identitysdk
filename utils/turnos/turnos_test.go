@@ -30,8 +30,8 @@ func makeDate(valor string) time.Time {
 
 func TestTurnoSimple(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	inicio := makeDate("2025-01-01 07:00")
@@ -52,8 +52,8 @@ func TestTurnoSimple(t *testing.T) {
 
 func TestCruceDeDosTurnos(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	inicio := makeDate("2025-01-01 17:00")
@@ -66,32 +66,24 @@ func TestCruceDeDosTurnos(t *testing.T) {
 	require.Len(t, res, 2)
 
 	esperados := []TestSegment{
-		{
-			CodigoTurno: "DAY",
-			FechaInicio: makeDate("2025-01-01 17:00"),
-			FechaFin:    makeDate("2025-01-01 18:00"),
-		},
-		{
-			CodigoTurno: "NIGHT",
-			FechaInicio: makeDate("2025-01-01 18:00"),
-			FechaFin:    makeDate("2025-01-01 19:00"),
-		},
+		{"DAY", makeDate("2025-01-01 17:00"), makeDate("2025-01-01 18:00")},
+		{"NIGHT", makeDate("2025-01-01 18:00"), makeDate("2025-01-01 19:00")},
 	}
 
 	for i, esperado := range esperados {
 		obt := res[i]
 
-		require.Equal(t, esperado.CodigoTurno, obt.CodigoTurno, "codigo turno mismatch en index %d", i)
-		require.Equal(t, esperado.FechaInicio, obt.FechaInicio, "fecha inicio mismatch en index %d", i)
-		require.Equal(t, esperado.FechaFin, obt.FechaFin, "fecha fin mismatch en index %d", i)
+		require.Equal(t, esperado.CodigoTurno, obt.CodigoTurno)
+		require.Equal(t, esperado.FechaInicio, obt.FechaInicio)
+		require.Equal(t, esperado.FechaFin, obt.FechaFin)
 	}
 }
 
 func TestTresSegmentos(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "12:00:00"},
-		{"AFTERNOON", "", "12:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "12:00:00"),
+		newTurno("AFTERNOON", "12:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -104,21 +96,9 @@ func TestTresSegmentos(t *testing.T) {
 	require.Len(t, res, 3)
 
 	esperados := []TestSegment{
-		{
-			CodigoTurno: "DAY",
-			FechaInicio: makeDate("2025-01-01 11:00"),
-			FechaFin:    makeDate("2025-01-01 12:00"),
-		},
-		{
-			CodigoTurno: "AFTERNOON",
-			FechaInicio: makeDate("2025-01-01 12:00"),
-			FechaFin:    makeDate("2025-01-01 18:00"),
-		},
-		{
-			CodigoTurno: "NIGHT",
-			FechaInicio: makeDate("2025-01-01 18:00"),
-			FechaFin:    makeDate("2025-01-01 19:00"),
-		},
+		{"DAY", makeDate("2025-01-01 11:00"), makeDate("2025-01-01 12:00")},
+		{"AFTERNOON", makeDate("2025-01-01 12:00"), makeDate("2025-01-01 18:00")},
+		{"NIGHT", makeDate("2025-01-01 18:00"), makeDate("2025-01-01 19:00")},
 	}
 
 	for i := range esperados {
@@ -130,8 +110,8 @@ func TestTresSegmentos(t *testing.T) {
 
 func TestResultadoTresSegmentos(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -144,21 +124,9 @@ func TestResultadoTresSegmentos(t *testing.T) {
 	require.Len(t, res, 3)
 
 	esperados := []TestSegment{
-		{
-			CodigoTurno: "DAY",
-			FechaInicio: makeDate("2025-01-01 17:00"),
-			FechaFin:    makeDate("2025-01-01 18:00"),
-		},
-		{
-			CodigoTurno: "NIGHT",
-			FechaInicio: makeDate("2025-01-01 18:00"),
-			FechaFin:    makeDate("2025-01-02 06:00"),
-		},
-		{
-			CodigoTurno: "DAY",
-			FechaInicio: makeDate("2025-01-02 06:00"),
-			FechaFin:    makeDate("2025-01-02 07:00"),
-		},
+		{"DAY", makeDate("2025-01-01 17:00"), makeDate("2025-01-01 18:00")},
+		{"NIGHT", makeDate("2025-01-01 18:00"), makeDate("2025-01-02 06:00")},
+		{"DAY", makeDate("2025-01-02 06:00"), makeDate("2025-01-02 07:00")},
 	}
 
 	for i := range esperados {
@@ -170,8 +138,8 @@ func TestResultadoTresSegmentos(t *testing.T) {
 
 func TestRangoDeVariosDias(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -184,10 +152,8 @@ func TestRangoDeVariosDias(t *testing.T) {
 	esperados := []TestSegment{
 		{"DAY", makeDate("2025-01-01 10:00"), makeDate("2025-01-01 18:00")},
 		{"NIGHT", makeDate("2025-01-01 18:00"), makeDate("2025-01-02 06:00")},
-
 		{"DAY", makeDate("2025-01-02 06:00"), makeDate("2025-01-02 18:00")},
 		{"NIGHT", makeDate("2025-01-02 18:00"), makeDate("2025-01-03 06:00")},
-
 		{"DAY", makeDate("2025-01-03 06:00"), makeDate("2025-01-03 09:00")},
 	}
 
@@ -202,8 +168,8 @@ func TestRangoDeVariosDias(t *testing.T) {
 
 func TestAplicarRangoInput(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -216,10 +182,8 @@ func TestAplicarRangoInput(t *testing.T) {
 	esperados := []TestSegment{
 		{"DAY", makeDate("2025-01-01 10:00"), makeDate("2025-01-01 18:00")},
 		{"NIGHT", makeDate("2025-01-01 18:00"), makeDate("2025-01-02 06:00")},
-
 		{"DAY", makeDate("2025-01-02 06:00"), makeDate("2025-01-02 18:00")},
 		{"NIGHT", makeDate("2025-01-02 18:00"), makeDate("2025-01-03 06:00")},
-
 		{"DAY", makeDate("2025-01-03 06:00"), makeDate("2025-01-03 09:00")},
 	}
 
@@ -234,8 +198,8 @@ func TestAplicarRangoInput(t *testing.T) {
 
 func TestHolguraMin(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -246,11 +210,7 @@ func TestHolguraMin(t *testing.T) {
 	res := turnos.SegmentarPorTurnos(turnosDef, input, 5)
 
 	esperados := []TestSegment{
-		{
-			CodigoTurno: "DAY",
-			FechaInicio: makeDate("2025-01-01 17:00"),
-			FechaFin:    makeDate("2025-01-01 18:03"),
-		},
+		{"DAY", makeDate("2025-01-01 17:00"), makeDate("2025-01-01 18:03")},
 	}
 
 	require.Len(t, res, len(esperados))
@@ -264,8 +224,8 @@ func TestHolguraMin(t *testing.T) {
 
 func TestInicioExactoEnCambioTurno(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -289,8 +249,8 @@ func TestInicioExactoEnCambioTurno(t *testing.T) {
 
 func TestFinExactoEnCambioTurno(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -314,7 +274,7 @@ func TestFinExactoEnCambioTurno(t *testing.T) {
 
 func TestTodoDentroDeTurnoCruzado(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"NOCHE", "", "18:00:00", "06:00:00"},
+		newTurno("NOCHE", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -338,8 +298,8 @@ func TestTodoDentroDeTurnoCruzado(t *testing.T) {
 
 func TestTurnoCompletoAfueraRango(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -363,7 +323,7 @@ func TestTurnoCompletoAfueraRango(t *testing.T) {
 
 func TestRangoMinimoDentroDeUnMinuto(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
 	}
 
 	input := TestSegment{
@@ -385,8 +345,8 @@ func TestRangoMinimoDentroDeUnMinuto(t *testing.T) {
 
 func TestHolguraNoAbsorbe(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -411,8 +371,8 @@ func TestHolguraNoAbsorbe(t *testing.T) {
 
 func TestHolguraExactaAbsorbe(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -435,8 +395,8 @@ func TestHolguraExactaAbsorbe(t *testing.T) {
 
 func TestHolguraJustoInsuficiente(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{
@@ -462,11 +422,10 @@ func TestHolguraJustoInsuficiente(t *testing.T) {
 
 func TestHolguraMuyGrandeAbsorbeTodoSiguienteTurno(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
-	// 10 minutos en NIGHT, pero holgura = 60 → absorbe todo
 	input := TestSegment{
 		FechaInicio: makeDate("2025-01-01 17:00"),
 		FechaFin:    makeDate("2025-01-01 18:10"),
@@ -486,11 +445,10 @@ func TestHolguraMuyGrandeAbsorbeTodoSiguienteTurno(t *testing.T) {
 
 func TestHolguraSegmentoCruzaMedianoche(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
-	// 5 minutos en el siguiente día → holgura lo absorbe
 	input := TestSegment{
 		FechaInicio: makeDate("2025-01-01 17:00"),
 		FechaFin:    makeDate("2025-01-02 00:05"),
@@ -513,8 +471,8 @@ func TestHolguraSegmentoCruzaMedianoche(t *testing.T) {
 
 func TestHolguraCeroComportaNormal(t *testing.T) {
 	turnosDef := []turnos.Turno{
-		{"DAY", "", "06:00:00", "18:00:00"},
-		{"NIGHT", "", "18:00:00", "06:00:00"},
+		newTurno("DAY", "06:00:00", "18:00:00"),
+		newTurno("NIGHT", "18:00:00", "06:00:00"),
 	}
 
 	input := TestSegment{

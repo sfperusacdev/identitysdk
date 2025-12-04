@@ -21,8 +21,8 @@ func ValidarTurnos(turnos []Turno) ([]Turno, error) {
 	list := make([]parsed, 0, len(turnos))
 
 	for _, t := range turnos {
-		hi, err1 := time.Parse("15:04:05", t.InicioStr)
-		hf, err2 := time.Parse("15:04:05", t.FinStr)
+		hi, err1 := time.Parse("15:04:05", t.Inicio)
+		hf, err2 := time.Parse("15:04:05", t.Fin)
 		if err1 != nil || err2 != nil {
 			return nil, fmt.Errorf("formato de hora inválido en turno %s", t.Codigo)
 		}

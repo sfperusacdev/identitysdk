@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newTurno(codigo, inicio, fin string) turnos.Turno {
+	return turnos.Turno{
+		Codigo: codigo,
+		Inicio: inicio,
+		Fin:    fin,
+	}
+}
 func TestValidarTurnos_TableDriven(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -17,8 +24,8 @@ func TestValidarTurnos_TableDriven(t *testing.T) {
 		{
 			name: "OK_DAY_NIGHT",
 			input: []turnos.Turno{
-				{"DAY", "", "06:00:00", "18:00:00"},
-				{"NIGHT", "", "18:00:00", "06:00:00"},
+				newTurno("DAY", "06:00:00", "18:00:00"),
+				newTurno("NIGHT", "18:00:00", "06:00:00"),
 			},
 			expectErr:   false,
 			expectCodes: []string{"DAY", "NIGHT"},
@@ -26,39 +33,39 @@ func TestValidarTurnos_TableDriven(t *testing.T) {
 		{
 			name: "Overlap",
 			input: []turnos.Turno{
-				{"A", "", "06:00:00", "18:00:00"},
-				{"B", "", "17:00:00", "06:00:00"},
+				newTurno("A", "06:00:00", "18:00:00"),
+				newTurno("B", "17:00:00", "06:00:00"),
 			},
 			expectErr: true,
 		},
 		{
 			name: "Gap",
 			input: []turnos.Turno{
-				{"A", "", "06:00:00", "18:00:00"},
-				{"B", "", "19:00:00", "06:00:00"},
+				newTurno("A", "06:00:00", "18:00:00"),
+				newTurno("B", "19:00:00", "06:00:00"),
 			},
 			expectErr: true,
 		},
 		{
 			name: "Incomplete24h",
 			input: []turnos.Turno{
-				{"A", "", "06:00:00", "18:00:00"},
-				{"B", "", "18:00:00", "05:00:00"},
+				newTurno("A", "06:00:00", "18:00:00"),
+				newTurno("B", "18:00:00", "05:00:00"),
 			},
 			expectErr: true,
 		},
 		{
 			name: "InvalidTime",
 			input: []turnos.Turno{
-				{"A", "", "xx:00:00", "18:00:00"},
-				{"B", "", "18:00:00", "06:00:00"},
+				newTurno("A", "xx:00:00", "18:00:00"),
+				newTurno("B", "18:00:00", "06:00:00"),
 			},
 			expectErr: true,
 		},
 		{
 			name: "SingleFullDay",
 			input: []turnos.Turno{
-				{"FULL", "", "00:00:00", "00:00:00"},
+				newTurno("FULL", "00:00:00", "00:00:00"),
 			},
 			expectErr:   false,
 			expectCodes: []string{"FULL"},
@@ -66,10 +73,10 @@ func TestValidarTurnos_TableDriven(t *testing.T) {
 		{
 			name: "MultipleTurnsFullCycle",
 			input: []turnos.Turno{
-				{"T1", "", "00:00:00", "06:00:00"},
-				{"T3", "", "12:00:00", "18:00:00"},
-				{"T4", "", "18:00:00", "00:00:00"},
-				{"T2", "", "06:00:00", "12:00:00"},
+				newTurno("T1", "00:00:00", "06:00:00"),
+				newTurno("T3", "12:00:00", "18:00:00"),
+				newTurno("T4", "18:00:00", "00:00:00"),
+				newTurno("T2", "06:00:00", "12:00:00"),
 			},
 			expectErr:   false,
 			expectCodes: []string{"T1", "T2", "T3", "T4"},
@@ -97,10 +104,10 @@ func TestValidarTurnos_TableDriven(t *testing.T) {
 
 func TestValidarTurnos_Ordering(t *testing.T) {
 	in := []turnos.Turno{
-		{"T3", "", "12:00:00", "18:00:00"},
-		{"T1", "", "00:00:00", "06:00:00"},
-		{"T4", "", "18:00:00", "00:00:00"},
-		{"T2", "", "06:00:00", "12:00:00"},
+		newTurno("T3", "12:00:00", "18:00:00"),
+		newTurno("T1", "00:00:00", "06:00:00"),
+		newTurno("T4", "18:00:00", "00:00:00"),
+		newTurno("T2", "06:00:00", "12:00:00"),
 	}
 
 	out, err := turnos.ValidarTurnos(in)
