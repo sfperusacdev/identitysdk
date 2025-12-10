@@ -8,6 +8,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/sfperusacdev/identitysdk/xreq"
+	"github.com/user0608/goones/errs"
 )
 
 func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Periodo, error) {
@@ -69,4 +70,29 @@ func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Period
 	}
 
 	return result, nil
+}
+
+func (s *ExternalBridgeService) PeriodoDia(ctx context.Context,
+	planilla string, fecha time.Time,
+) (entities.PeriodoItem, error) {
+	periodos, err := s.Periodos(ctx)
+	if err != nil {
+		return entities.PeriodoItem{}, err
+	}
+
+	for _, p := range periodos {
+		if p.PlanillaID == planilla {
+			for _, itm := range p.Items {
+				if (itm.FechaInicio.Equal(fecha) || itm.FechaInicio.Before(fecha)) &&
+					(itm.FechaFin.Equal(fecha) || itm.FechaFin.After(fecha)) {
+					return itm, nil
+				}
+			}
+		}
+	}
+	return entities.PeriodoItem{},
+		errs.NotFoundf(
+			"no se encontró período para la fecha indicada en la planilla %s",
+			identitysdk.RemovePrefix(planilla),
+		)
 }
