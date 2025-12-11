@@ -49,7 +49,7 @@ func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context, incluirInac
 	}
 	var enpointPath = "/v1/fotocheck/trabajadores/json"
 
-	var queryParams url.Values
+	var queryParams = make(url.Values)
 	if incluirInactivos {
 		queryParams.Set("incluir_inactivos", "yes")
 	}
