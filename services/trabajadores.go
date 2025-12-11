@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
@@ -15,7 +16,7 @@ import (
 	"github.com/user0608/goones/errs"
 )
 
-func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities.ResumenTrabajadorDto, error) {
+func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context, incluirInactivos bool) ([]entities.ResumenTrabajadorDto, error) {
 	var company, token = s.readCompanyAndToken(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)
 	if err != nil {
@@ -47,13 +48,21 @@ func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context) ([]entities
 		} `json:"data"`
 	}
 	var enpointPath = "/v1/fotocheck/trabajadores/json"
+
+	var queryParams url.Values
+	if incluirInactivos {
+		queryParams.Set("incluir_inactivos", "yes")
+	}
+
 	if err := xreq.MakeRequest(ctx,
 		baseurl, enpointPath,
 		xreq.WithAuthorization(token),
 		xreq.WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithQueryParams(queryParams),
 	); err != nil {
 		return nil, err
 	}
+
 	var response = make([]entities.ResumenTrabajadorDto, 0, len(apiresponse.Data))
 	for _, itm := range apiresponse.Data {
 		response = append(response, entities.ResumenTrabajadorDto{
