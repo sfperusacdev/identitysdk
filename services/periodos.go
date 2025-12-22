@@ -11,7 +11,7 @@ import (
 	"github.com/user0608/goones/errs"
 )
 
-func (s *ExternalBridgeService) Periodos(ctx context.Context) ([]entities.Periodo, error) {
+func (s *ExternalBridgeService) Periodos(ctx context.Context) (entities.Periodos, error) {
 	company, token := s.readCompanyAndToken(ctx)
 	baseURL, err := identitysdk.GetAsistenciaServiceURL(ctx, company)
 	if err != nil {
@@ -80,19 +80,15 @@ func (s *ExternalBridgeService) PeriodoDia(ctx context.Context,
 		return entities.PeriodoItem{}, err
 	}
 
-	for _, p := range periodos {
-		if p.PlanillaID == planilla {
-			for _, itm := range p.Items {
-				if (itm.FechaInicio.Equal(fecha) || itm.FechaInicio.Before(fecha)) &&
-					(itm.FechaFin.Equal(fecha) || itm.FechaFin.After(fecha)) {
-					return itm, nil
-				}
-			}
-		}
+	periodo := periodos.BuscarPeriodoDia(planilla, fecha)
+
+	if periodo.IsZero() {
+		return entities.PeriodoItem{},
+			errs.NotFoundf(
+				"no se encontró período para la fecha indicada en la planilla %s",
+				identitysdk.RemovePrefix(planilla),
+			)
 	}
-	return entities.PeriodoItem{},
-		errs.NotFoundf(
-			"no se encontró período para la fecha indicada en la planilla %s",
-			identitysdk.RemovePrefix(planilla),
-		)
+
+	return periodo, nil
 }
