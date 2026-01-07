@@ -11,11 +11,11 @@ import (
 )
 
 type ScriptCommonService struct {
-	VarName string
+	varName string
 }
 
 func NewScriptCommonService() *ScriptCommonService {
-	return &ScriptCommonService{VarName: "ctx"}
+	return &ScriptCommonService{varName: "ctx"}
 }
 
 func (s *ScriptCommonService) Execute(ptr any, script string) error {
@@ -27,7 +27,7 @@ func (s *ScriptCommonService) Execute(ptr any, script string) error {
 
 	vm := goja.New()
 
-	_, err = vm.RunString(fmt.Sprintf(`%s = JSON.parse(%q);`, s.VarName, b))
+	_, err = vm.RunString(fmt.Sprintf(`%s = JSON.parse(%q);`, s.varName, b))
 	if err != nil {
 		slog.Error("js parse error", "error", err)
 		return err
@@ -39,7 +39,7 @@ func (s *ScriptCommonService) Execute(ptr any, script string) error {
 		return err
 	}
 
-	exported := vm.Get(s.VarName).Export()
+	exported := vm.Get(s.varName).Export()
 
 	if err := validateTypes(ptr, exported); err != nil {
 		slog.Error("type validation failed", "error", err)
