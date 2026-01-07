@@ -27,6 +27,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
 	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
+	"github.com/sfperusacdev/identitysdk/helpers/scripting"
 	"github.com/sfperusacdev/identitysdk/helpers/signpdf"
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/httpapi"
@@ -436,6 +437,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
 			fx.Provide(fotocheck.NewFotocheckBuilder),
+			fx.Provide(scripting.NewScriptCommonService),
 
 			fx.Provide(
 				fx.Annotate(

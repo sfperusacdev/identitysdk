@@ -14,7 +14,7 @@ type ScriptCommonService struct {
 	VarName string
 }
 
-func NewLuaCommonService() *ScriptCommonService {
+func NewScriptCommonService() *ScriptCommonService {
 	return &ScriptCommonService{VarName: "ctx"}
 }
 

@@ -36,7 +36,7 @@ type ComplexUser struct {
 }
 
 func TestExecute_ComplexMutation(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	u := &ComplexUser{
 		Name:   "Juan",
@@ -146,7 +146,7 @@ type TimeDTO struct {
 }
 
 func TestExecute_TimeOperationsWithTimeTime(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	start := time.Date(2024, 1, 5, 10, 30, 0, 0, time.UTC)
 	end := time.Date(2024, 1, 12, 10, 30, 0, 0, time.UTC)
@@ -204,7 +204,7 @@ type SimpleUser struct {
 }
 
 func TestExecute_InvalidTypeError(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	u := &SimpleUser{
 		Name: "Test",
@@ -226,7 +226,7 @@ func TestExecute_InvalidTypeError(t *testing.T) {
 }
 
 func TestExecute_ScriptSyntaxError(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	u := &SimpleUser{
 		Name: "Test",
@@ -248,7 +248,7 @@ func TestExecute_ScriptSyntaxError(t *testing.T) {
 }
 
 func TestExecute_Concurrent(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	var wg sync.WaitGroup
 	n := 20
@@ -296,7 +296,7 @@ type TaggedUser struct {
 }
 
 func TestExecute_WithJSONTags(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	u := &TaggedUser{
 		FullName: "John Doe",
@@ -349,7 +349,7 @@ func TestExecute_WithJSONTags(t *testing.T) {
 }
 
 func TestExecute_EmptyScript(t *testing.T) {
-	svc := NewLuaCommonService()
+	svc := NewScriptCommonService()
 
 	u := &SimpleUser{
 		Name: "John",
