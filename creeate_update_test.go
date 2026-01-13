@@ -19,10 +19,7 @@ func createContext() context.Context {
 }
 
 type testStruct struct {
-	CreatedBy string
-	CreatedAt time.Time
-	UpdatedBy string
-	UpdatedAt time.Time
+	identitysdk.Model
 }
 
 func TestCreateBy(t *testing.T) {

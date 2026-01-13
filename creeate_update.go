@@ -11,10 +11,10 @@ import (
 )
 
 type Model struct {
-	CreatedBy string
-	CreatedAt time.Time
-	UpdatedBy string
-	UpdatedAt time.Time
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedBy string    `json:"updated_by"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (m Model) IsZero() bool {
@@ -61,13 +61,6 @@ type update struct {
 	UpdatedAt time.Time
 }
 
-type create struct {
-	UpdatedBy string
-	UpdatedAt time.Time
-	CreatedBy string
-	CreatedAt time.Time
-}
-
 func CreateBy(ctx context.Context, i any) {
 	var typ = reflect.TypeOf(i)
 	if typ.Kind() != reflect.Pointer {
@@ -89,7 +82,7 @@ func CreateBy(ctx context.Context, i any) {
 		return
 	}
 
-	createdBy := create{
+	createdBy := Model{
 		UpdatedBy: username,
 		UpdatedAt: now,
 		CreatedBy: username,
