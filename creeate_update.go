@@ -10,6 +10,52 @@ import (
 	"github.com/jinzhu/copier"
 )
 
+type Model struct {
+	CreatedBy string
+	CreatedAt time.Time
+	UpdatedBy string
+	UpdatedAt time.Time
+}
+
+func (m Model) IsZero() bool {
+	return m.CreatedBy == "" &&
+		m.CreatedAt.IsZero() &&
+		m.UpdatedBy == "" &&
+		m.UpdatedAt.IsZero()
+}
+
+func (m Model) IsCreated() bool {
+	return m.CreatedBy != "" && !m.CreatedAt.IsZero()
+}
+
+func (m Model) IsUpdated() bool {
+	return m.UpdatedBy != "" && !m.UpdatedAt.IsZero()
+}
+
+// IsStale returns true if the last update happened earlier than the given duration.
+func (m Model) IsStale(d time.Duration) bool {
+	if m.UpdatedAt.IsZero() {
+		return false
+	}
+	return time.Since(m.UpdatedAt) > d
+}
+
+// Age returns the elapsed time since creation, or zero if unset.
+func (m Model) Age() time.Duration {
+	if m.CreatedAt.IsZero() {
+		return 0
+	}
+	return time.Since(m.CreatedAt)
+}
+
+// UpdatedAgo returns how much time passed since the last update, or zero if unset.
+func (m Model) UpdatedAgo() time.Duration {
+	if m.UpdatedAt.IsZero() {
+		return 0
+	}
+	return time.Since(m.UpdatedAt)
+}
+
 type update struct {
 	UpdatedBy string
 	UpdatedAt time.Time
