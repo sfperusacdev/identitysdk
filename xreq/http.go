@@ -84,6 +84,14 @@ func WithRequestBody(body io.Reader) RequestOption {
 }
 
 func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...RequestOption) error {
+	if baseUrl == "" {
+		err := errors.New("base URL cannot be empty")
+		slog.Error(
+			"validating base URL",
+			"error", err,
+		)
+		return err
+	}
 	options := &RequestOptions{
 		Method: http.MethodGet,
 	}
