@@ -33,9 +33,18 @@ func TestSyncBasic(t *testing.T) {
 	strategy := datasync.SyncStrategy[Ext, Loc]{
 		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
 		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
-		Insert: func(ctx context.Context, y Loc) error { ins++; return nil },
-		Update: func(ctx context.Context, y Loc) error { up++; return nil },
-		Delete: func(ctx context.Context, y Loc) error { del++; return nil },
+		Insert: func(ctx context.Context, newY Loc) error {
+			ins++
+			return nil
+		},
+		Update: func(ctx context.Context, oldY Loc, newY Loc) error {
+			up++
+			return nil
+		},
+		Delete: func(ctx context.Context, oldY Loc) error {
+			del++
+			return nil
+		},
 	}
 
 	r, err := datasync.Sync(ctx, external, local, strategy)
@@ -61,16 +70,16 @@ func TestSyncBatchBasic(t *testing.T) {
 	strategy := datasync.SyncBatchStrategy[Ext, Loc]{
 		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
 		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
-		InsertBatch: func(ctx context.Context, y []Loc) error {
-			ins = len(y)
+		InsertBatch: func(ctx context.Context, newYs []Loc) error {
+			ins = len(newYs)
 			return nil
 		},
-		UpdateBatch: func(ctx context.Context, y []Loc) error {
-			up = len(y)
+		UpdateBatch: func(ctx context.Context, oldYs []Loc, newYs []Loc) error {
+			up = len(oldYs)
 			return nil
 		},
-		DeleteBatch: func(ctx context.Context, y []Loc) error {
-			del = len(y)
+		DeleteBatch: func(ctx context.Context, oldYs []Loc) error {
+			del = len(oldYs)
 			return nil
 		},
 	}
@@ -116,7 +125,9 @@ func TestSyncErrorPropagation(t *testing.T) {
 	strategy := datasync.SyncStrategy[Ext, Loc]{
 		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
 		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
-		Update: func(ctx context.Context, y Loc) error { return errors.New("update error") },
+		Update: func(ctx context.Context, oldY Loc, newY Loc) error {
+			return errors.New("update error")
+		},
 	}
 
 	_, err := datasync.Sync(ctx, external, local, strategy)
@@ -134,7 +145,7 @@ func TestSyncBatchErrorPropagation(t *testing.T) {
 	strategy := datasync.SyncBatchStrategy[Ext, Loc]{
 		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
 		Map:    func(e Ext) Loc { return Loc{ID: e.ID} },
-		InsertBatch: func(ctx context.Context, y []Loc) error {
+		InsertBatch: func(ctx context.Context, newYs []Loc) error {
 			return errors.New("insert batch error")
 		},
 	}
@@ -184,5 +195,82 @@ func TestSyncBatchNoChanges(t *testing.T) {
 
 	if r.Inserted != 0 || r.Updated != 0 || r.Deleted != 0 || r.Unchanged != 2 {
 		t.Fatal("unexpected counts")
+	}
+}
+
+func TestSync_UpdateReceivesOldAndNew(t *testing.T) {
+	ctx := context.Background()
+
+	external := []Ext{{ID: "1", Val: 100, Name: "NEW"}}
+	local := []Loc{{ID: "1", Val: 10, Name: "OLD"}}
+
+	receivedOld := Loc{}
+	receivedNew := Loc{}
+
+	strategy := datasync.SyncStrategy[Ext, Loc]{
+		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Val: e.Val, Name: e.Name} },
+		Update: func(ctx context.Context, oldY Loc, newY Loc) error {
+			receivedOld = oldY
+			receivedNew = newY
+			return nil
+		},
+	}
+
+	_, err := datasync.Sync(ctx, external, local, strategy)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if receivedOld.ID != "1" || receivedOld.Val != 10 || receivedOld.Name != "OLD" {
+		t.Fatalf("unexpected old value: %+v", receivedOld)
+	}
+
+	if receivedNew.ID != "1" || receivedNew.Val != 100 || receivedNew.Name != "NEW" {
+		t.Fatalf("unexpected new value: %+v", receivedNew)
+	}
+}
+
+func TestSyncBatch_UpdateReceivesOldAndNew(t *testing.T) {
+	ctx := context.Background()
+
+	external := []Ext{{ID: "1", Val: 100, Name: "NEW"}}
+	local := []Loc{{ID: "1", Val: 10, Name: "OLD"}}
+
+	var oldValues []Loc
+	var newValues []Loc
+
+	strategy := datasync.SyncBatchStrategy[Ext, Loc]{
+		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Val: e.Val, Name: e.Name} },
+		UpdateBatch: func(ctx context.Context, oldYs []Loc, newYs []Loc) error {
+			oldValues = oldYs
+			newValues = newYs
+			return nil
+		},
+	}
+
+	_, err := datasync.SyncBatch(ctx, external, local, strategy)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(oldValues) != 1 {
+		t.Fatalf("expected 1 old value, got %d", len(oldValues))
+	}
+
+	if len(newValues) != 1 {
+		t.Fatalf("expected 1 new value, got %d", len(newValues))
+	}
+
+	oldY := oldValues[0]
+	newY := newValues[0]
+
+	if oldY.ID != "1" || oldY.Val != 10 || oldY.Name != "OLD" {
+		t.Fatalf("unexpected old value: %+v", oldY)
+	}
+
+	if newY.ID != "1" || newY.Val != 100 || newY.Name != "NEW" {
+		t.Fatalf("unexpected new value: %+v", newY)
 	}
 }

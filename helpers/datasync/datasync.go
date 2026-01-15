@@ -15,9 +15,9 @@ type SyncResult struct {
 type SyncStrategy[X any, Y any] struct {
 	Equals func(ext X, loc Y) bool
 	Map    func(ext X) Y
-	Insert func(ctx context.Context, y Y) error
-	Update func(ctx context.Context, y Y) error
-	Delete func(ctx context.Context, y Y) error
+	Insert func(ctx context.Context, new Y) error
+	Update func(ctx context.Context, old Y, new Y) error
+	Delete func(ctx context.Context, old Y) error
 }
 
 func Sync[X any, Y any](
@@ -37,19 +37,21 @@ func Sync[X any, Y any](
 	used := make([]bool, len(local))
 
 	for _, ext := range external {
-		mapped := strategy.Map(ext)
+		newY := strategy.Map(ext)
 		matched := -1
+		var oldY Y
 
 		for i, loc := range local {
 			if strategy.Equals(ext, loc) {
 				matched = i
+				oldY = loc
 				break
 			}
 		}
 
 		if matched >= 0 {
 			if strategy.Update != nil {
-				if err := strategy.Update(ctx, mapped); err != nil {
+				if err := strategy.Update(ctx, oldY, newY); err != nil {
 					return result, err
 				}
 				result.Updated++
@@ -61,20 +63,19 @@ func Sync[X any, Y any](
 		}
 
 		if strategy.Insert != nil {
-			if err := strategy.Insert(ctx, mapped); err != nil {
+			if err := strategy.Insert(ctx, newY); err != nil {
 				return result, err
 			}
 			result.Inserted++
-			continue
 		}
 	}
 
 	if strategy.Delete != nil {
-		for i, loc := range local {
+		for i, oldY := range local {
 			if used[i] {
 				continue
 			}
-			if err := strategy.Delete(ctx, loc); err != nil {
+			if err := strategy.Delete(ctx, oldY); err != nil {
 				return result, err
 			}
 			result.Deleted++
@@ -87,9 +88,9 @@ func Sync[X any, Y any](
 type SyncBatchStrategy[X any, Y any] struct {
 	Equals      func(ext X, loc Y) bool
 	Map         func(ext X) Y
-	InsertBatch func(ctx context.Context, ys []Y) error
-	UpdateBatch func(ctx context.Context, ys []Y) error
-	DeleteBatch func(ctx context.Context, ys []Y) error
+	InsertBatch func(ctx context.Context, newYs []Y) error
+	UpdateBatch func(ctx context.Context, oldYs []Y, newYs []Y) error
+	DeleteBatch func(ctx context.Context, oldYs []Y) error
 }
 
 func SyncBatch[X any, Y any](
@@ -108,32 +109,36 @@ func SyncBatch[X any, Y any](
 	result := SyncResult{}
 	used := make([]bool, len(local))
 	newItems := make([]Y, 0)
-	updateItems := make([]Y, 0)
+	updateOld := make([]Y, 0)
+	updateNew := make([]Y, 0)
 	deleteItems := make([]Y, 0)
 
 	for _, ext := range external {
-		mapped := strategy.Map(ext)
+		newY := strategy.Map(ext)
 		matched := -1
+		var oldY Y
 
 		for i, loc := range local {
 			if strategy.Equals(ext, loc) {
 				matched = i
+				oldY = loc
 				break
 			}
 		}
 
 		if matched >= 0 {
-			updateItems = append(updateItems, mapped)
+			updateOld = append(updateOld, oldY)
+			updateNew = append(updateNew, newY)
 			used[matched] = true
 			continue
 		}
 
-		newItems = append(newItems, mapped)
+		newItems = append(newItems, newY)
 	}
 
-	for i, loc := range local {
+	for i, oldY := range local {
 		if !used[i] {
-			deleteItems = append(deleteItems, loc)
+			deleteItems = append(deleteItems, oldY)
 		}
 	}
 
@@ -144,11 +149,11 @@ func SyncBatch[X any, Y any](
 		result.Inserted = len(newItems)
 	}
 
-	if len(updateItems) > 0 && strategy.UpdateBatch != nil {
-		if err := strategy.UpdateBatch(ctx, updateItems); err != nil {
+	if len(updateNew) > 0 && strategy.UpdateBatch != nil {
+		if err := strategy.UpdateBatch(ctx, updateOld, updateNew); err != nil {
 			return result, err
 		}
-		result.Updated = len(updateItems)
+		result.Updated = len(updateNew)
 	}
 
 	if len(deleteItems) > 0 && strategy.DeleteBatch != nil {
