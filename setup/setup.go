@@ -32,7 +32,8 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
-	"github.com/sfperusacdev/identitysdk/services"
+
+	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
 	"github.com/user0608/numeroaletras"
@@ -45,11 +46,16 @@ type ServiceDetails struct {
 	Description string
 }
 
+type StorageManagerProvider func() (connection.StorageManager, error)
+type ExternalBridgeServiceProvider func() (*identitysdk_services.ExternalBridgeService, error)
+
 type ServiceOptions struct {
-	configProvider configs.ConfigsProviderFunc
-	details        ServiceDetails
-	migrationsDir  fs.FS
-	propertiesDir  fs.FS
+	configProvider                configs.ConfigsProviderFunc
+	details                       ServiceDetails
+	migrationsDir                 fs.FS
+	propertiesDir                 fs.FS
+	storageManagerProvider        StorageManagerProvider
+	externalBridgeServiceProvider ExternalBridgeServiceProvider
 }
 
 type ServiceOption func(*ServiceOptions)
@@ -84,6 +90,26 @@ func WithConfigProvider(provider configs.ConfigsProviderFunc) ServiceOption {
 	}
 }
 
+func WithStorageManagerProvider(provider StorageManagerProvider) ServiceOption {
+	return func(o *ServiceOptions) {
+		if provider == nil {
+			slog.Warn("StorageManagerProvider is nil, operation skipped")
+			return
+		}
+		o.storageManagerProvider = provider
+	}
+}
+
+func WithExternalBridgeServiceProvider(provider ExternalBridgeServiceProvider) ServiceOption {
+	return func(o *ServiceOptions) {
+		if provider == nil {
+			slog.Warn("ExternalBridgeServiceProvider is nil, operation skipped")
+			return
+		}
+		o.externalBridgeServiceProvider = provider
+	}
+}
+
 func WithDetails(serviceID, description string) ServiceOption {
 	return func(o *ServiceOptions) {
 		o.details = ServiceDetails{
@@ -106,6 +132,9 @@ func NewService(
 ) *Service {
 	options := &ServiceOptions{
 		configProvider: configs.DefaultConfigsProviderFunc,
+		externalBridgeServiceProvider: func() (*identitysdk_services.ExternalBridgeService, error) {
+			return identitysdk_services.NewExternalBridgeService(), nil
+		},
 	}
 	for _, apply := range opts {
 		apply(options)
@@ -114,6 +143,10 @@ func NewService(
 	service := &Service{
 		version: version,
 		options: *options,
+	}
+
+	if service.options.storageManagerProvider == nil {
+		service.options.storageManagerProvider = service._getConnectionManager
 	}
 
 	service.Command = &cobra.Command{
@@ -264,7 +297,7 @@ func (s *Service) configs() (configs.GeneralServiceConfigProvider, configs.Datab
 	return ceneralConfig, dbconfig, nil
 }
 
-func (s *Service) getCconnectionManager() (connection.StorageManager, error) {
+func (s *Service) _getConnectionManager() (connection.StorageManager, error) {
 	_, c, err := s.configs()
 	if err != nil {
 		slog.Error("Error fetching database configs", "error", err)
@@ -282,7 +315,7 @@ func (s *Service) getCconnectionManager() (connection.StorageManager, error) {
 
 }
 func (s *Service) getDatabaseConnection() (*sql.DB, error) {
-	connectionManager, err := s.getCconnectionManager()
+	connectionManager, err := s.options.storageManagerProvider()
 	if err != nil {
 		slog.Error("Error opening database connection", "error", err)
 		return nil, err
@@ -369,7 +402,7 @@ func (s *Service) publishServiceDetails(c configs.GeneralServiceConfigProvider) 
 
 func (s *Service) Run(opts ...fx.Option) error {
 	s.Command.Run = func(cmd *cobra.Command, args []string) {
-		connectionManager, err := s.getCconnectionManager()
+		connectionManager, err := s.options.storageManagerProvider()
 		if err != nil {
 			slog.Error("Error opening database connection", "error", err)
 			os.Exit(1)
@@ -432,7 +465,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 				},
 			),
 
-			fx.Provide(services.NewExternalBridgeService),
+			fx.Provide(s.options.externalBridgeServiceProvider),
 			// tools
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
