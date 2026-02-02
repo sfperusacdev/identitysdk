@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -32,10 +33,12 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
+	"github.com/sfperusacdev/identitysdk/setup/sqlviews"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
+	"github.com/user0608/ifdevmode"
 	"github.com/user0608/numeroaletras"
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v2"
@@ -331,6 +334,126 @@ func (s *Service) getDatabaseConnection() (*sql.DB, error) {
 	return db, nil
 }
 
+type DbViewFile struct {
+	FileName string
+	SQL      string
+	Views    []string
+}
+
+func (s *Service) getDB_views(fsys fs.FS) ([]DbViewFile, error) {
+	baseDir := "migrations/_views"
+
+	entries, err := fs.ReadDir(fsys, baseDir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return []DbViewFile{}, nil
+	case err != nil:
+		slog.Error(
+			"failed to read views directory",
+			"dir", baseDir,
+			"error", err,
+		)
+		return nil, err
+	}
+
+	var result []DbViewFile
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+
+		path := filepath.Join(baseDir, name)
+
+		content, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			slog.Error(
+				"failed to read sql file",
+				"path", path,
+				"error", err,
+			)
+			return nil, err
+		}
+
+		if len(content) == 0 {
+			continue
+		}
+
+		sqlText := string(content)
+		views := sqlviews.FindViewNames(sqlText)
+
+		result = append(result, DbViewFile{
+			FileName: name,
+			SQL:      sqlText,
+			Views:    views,
+		})
+	}
+
+	return result, nil
+}
+
+func (s *Service) drop_views(db *sql.DB, files []DbViewFile) error {
+	var num int
+	for _, f := range files {
+		for _, view := range f.Views {
+			query := `DROP VIEW IF EXISTS ` + view
+			if _, err := db.Exec(query); err != nil {
+				slog.Error(
+					"failed to drop view",
+					"view", view,
+					"error", err,
+				)
+				return err
+			}
+			ifdevmode.Do(func() {
+				slog.Info(
+					"view dropped",
+					"view", view,
+				)
+			}, ifdevmode.WithSyncExecution())
+		}
+		num += len(f.Views)
+	}
+	if num > 0 {
+		slog.Info(
+			"views dropped successfully",
+			"count", num,
+		)
+	}
+	return nil
+}
+
+func (s *Service) recovery_view(db *sql.DB, files []DbViewFile) error {
+	for _, f := range files {
+		if _, err := db.Exec(f.SQL); err != nil {
+			slog.Error(
+				"failed to execute sql file",
+				"file", f.FileName,
+				"error", err,
+			)
+			return err
+		}
+		ifdevmode.Do(func() {
+			slog.Info(
+				"view file executed",
+				"file", f.FileName,
+			)
+		}, ifdevmode.WithSyncExecution())
+	}
+	if len(files) > 0 {
+		slog.Info(
+			"database views restored",
+			"files", len(files),
+		)
+	}
+	return nil
+}
+
 func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.Command {
 	return &cobra.Command{
 		Use:   use,
@@ -347,10 +470,29 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 				os.Exit(1)
 			}
 			goose.SetBaseFS(s.options.migrationsDir)
+			viewsFiles, err := s.getDB_views(s.options.migrationsDir)
+			if err != nil {
+				slog.Error("failed to load view definitions", "error", err)
+				os.Exit(1)
+			}
+
+			if migrationType == "up" {
+				if err := s.drop_views(db, viewsFiles); err != nil {
+					slog.Error("failed to drop views", "error", err)
+					os.Exit(1)
+				}
+			}
 			err = goose.RunWithOptionsContext(context.Background(), migrationType, db, "migrations", []string{})
 			if err != nil {
 				slog.Error(fmt.Sprintf("Database %s failed", migrationType), "error", err)
 				os.Exit(1)
+			}
+
+			if migrationType == "up" {
+				if err := s.recovery_view(db, viewsFiles); err != nil {
+					slog.Error("failed to recreate views", "error", err)
+					os.Exit(1)
+				}
 			}
 		},
 	}
@@ -429,12 +571,29 @@ func (s *Service) Run(opts ...fx.Option) error {
 				os.Exit(1)
 			}
 
+			viewsFiles, err := s.getDB_views(s.options.migrationsDir)
+			if err != nil {
+				slog.Error("failed to load view definitions", "error", err)
+				os.Exit(1)
+			}
+
+			if err := s.drop_views(conn, viewsFiles); err != nil {
+				slog.Error("failed to drop views", "error", err)
+				os.Exit(1)
+			}
+
 			slog.Info("Running database migrations...")
 			err = goose.RunWithOptionsContext(ctx, "up", conn, "migrations", []string{})
 			if err != nil {
 				slog.Error("Error running migrations", "error", err)
 				os.Exit(1)
 			}
+
+			if err := s.recovery_view(conn, viewsFiles); err != nil {
+				slog.Error("failed to recreate views", "error", err)
+				os.Exit(1)
+			}
+
 			slog.Info("Migrations completed successfully")
 		}
 
