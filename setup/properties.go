@@ -3,11 +3,13 @@ package setup
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 )
 
@@ -66,4 +68,42 @@ func (s *Service) readProperties(fsys fs.FS) ([]models.DetailedSystemProperty, e
 		}
 	}
 	return results, nil
+}
+
+func (s *Service) GenerateSystemProps(fsys fs.FS, pkg string, out io.Writer) error {
+	entries, err := s.readProperties(fsys)
+	if err != nil {
+		return err
+	}
+
+	var str strings.Builder
+
+	fmt.Fprintf(&str, "package %s\n\n", pkg)
+	str.WriteString(`import "github.com/sfperusacdev/identitysdk/helpers/properties"`)
+	str.WriteByte('\n')
+	str.WriteByte('\n')
+
+	length := len(entries)
+
+	for i, entry := range entries {
+		name := strings.ReplaceAll(slug.Make(entry.ID), "-", "_")
+		name = strings.ToUpper(name)
+
+		if entry.Description != "" {
+			fmt.Fprintf(&str, "// %s\n", entry.Description)
+		}
+		if entry.Type != "" {
+			fmt.Fprintf(&str, "// type: %s\n", entry.Type)
+		}
+
+		fmt.Fprintf(&str, `const %s properties.SystemProperty = "%s"`, name, entry.ID)
+
+		if i != length-1 {
+			str.WriteByte('\n')
+			str.WriteByte('\n')
+		}
+	}
+
+	_, err = fmt.Fprint(out, str.String())
+	return err
 }

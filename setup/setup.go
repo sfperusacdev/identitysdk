@@ -17,7 +17,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gosimple/slug"
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
@@ -209,7 +208,7 @@ func NewService(
 						if mathed == nil {
 							continue
 						}
-						output.WriteString(fmt.Sprintf("--%s\n", entry.Name()))
+						fmt.Fprintf(&output, "--%s\n", entry.Name())
 						skipBytes := []byte("--")
 						var scanner = bufio.NewScanner(bytes.NewBuffer(mathed))
 						for scanner.Scan() {
@@ -233,47 +232,21 @@ func NewService(
 	if options.propertiesDir != nil {
 		var packageName *string
 
-		var command = &cobra.Command{
+		command := &cobra.Command{
 			Use: "system-props",
 			Run: func(cmd *cobra.Command, args []string) {
-				if packageName == nil {
-					var val = "properties"
-					packageName = &val
-				}
-				entries, err := service.readProperties(options.propertiesDir)
+				err := service.GenerateSystemProps(options.propertiesDir, *packageName, os.Stdout)
 				if err != nil {
-					slog.Error("reading properties", "error", err)
+					slog.Error("generating system props", "error", err)
 					os.Exit(1)
 				}
-				var str strings.Builder
-				str.WriteString(fmt.Sprintf("package %s\n\n", *packageName))
-				str.WriteString(`import "github.com/sfperusacdev/identitysdk/helpers/properties"`)
-				str.WriteByte('\n')
-				str.WriteByte('\n')
-				var length = len(entries)
-				for i, entry := range entries {
-					var name = strings.ReplaceAll(slug.Make(entry.ID), "-", "_")
-					name = strings.ToUpper(name)
-					if entry.Description != "" {
-						str.WriteString(fmt.Sprintf("// %s\n", entry.Description))
-					}
-					if entry.Type != "" {
-						str.WriteString(fmt.Sprintf("// type: %s\n", entry.Type))
-					}
-					str.WriteString(
-						fmt.Sprintf(`const %s properties.SystemProperty = "%s"`, name, entry.ID),
-					)
-					if i != length-1 {
-						str.WriteByte('\n')
-						str.WriteByte('\n')
-					}
-				}
-				fmt.Println(str.String())
 			},
 		}
+
 		packageName = command.Flags().StringP("package", "p", "properties", "Specifies the Go package name for the generated code")
 		service.Command.AddCommand(command)
 	}
+
 	return service
 }
 
