@@ -172,7 +172,8 @@ func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.Detail
 		priority`
 	var tx = r.manager.Conn(ctx)
 	var entries = []models.DetailedSystemProperty{}
-	if rs := tx.Raw(qry, prefix).Scan(&entries); rs.Error != nil {
+	if rs := tx.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Error)}).
+		Raw(qry, prefix).Scan(&entries); rs.Error != nil {
 		return nil, errs.Pgf(rs.Error)
 	}
 	return entries, nil
