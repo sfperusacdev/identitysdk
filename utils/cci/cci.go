@@ -12,9 +12,9 @@ type Bank struct {
 }
 
 var (
-	ErrInvalidCCILength = errors.New("cci must be 20 digits long")
-	ErrCCINotNumeric    = errors.New("cci must contain only digits")
-	ErrUnknownBankCode  = errors.New("unknown bank code")
+	ErrInvalidCCILength = errors.New("el CCI debe tener 20 digitos")
+	ErrCCINotNumeric    = errors.New("el CCI solo debe contener numeros")
+	ErrUnknownBankCode  = errors.New("codigo de banco desconocido")
 )
 
 var banksByCode = map[string]Bank{
@@ -37,14 +37,14 @@ var banksByCode = map[string]Bank{
 	"065": {ID: "BBTG", Description: "BTG Pactual Peru", Swift: "BBTGPEPL"},
 }
 
-func ResolveBankFromCCI(cci string) (Bank, error) {
+func ResolveBankFromCCI(cci string) (*Bank, error) {
 	if len(cci) != 20 {
-		return Bank{}, ErrInvalidCCILength
+		return nil, ErrInvalidCCILength
 	}
 
 	for _, r := range cci {
 		if !unicode.IsDigit(r) {
-			return Bank{}, ErrCCINotNumeric
+			return nil, ErrCCINotNumeric
 		}
 	}
 
@@ -52,8 +52,8 @@ func ResolveBankFromCCI(cci string) (Bank, error) {
 
 	bank, ok := banksByCode[code]
 	if !ok {
-		return Bank{}, ErrUnknownBankCode
+		return nil, ErrUnknownBankCode
 	}
 
-	return bank, nil
+	return &bank, nil
 }
