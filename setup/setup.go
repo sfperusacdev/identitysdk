@@ -23,6 +23,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/docxtopdf"
 	"github.com/sfperusacdev/identitysdk/helpers/facecropper"
 	"github.com/sfperusacdev/identitysdk/helpers/fotocheck"
+	"github.com/sfperusacdev/identitysdk/helpers/monitoring"
 	"github.com/sfperusacdev/identitysdk/helpers/properties"
 	"github.com/sfperusacdev/identitysdk/helpers/properties/models"
 	propertiesfx "github.com/sfperusacdev/identitysdk/helpers/properties/properties_fx"
@@ -623,6 +624,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 				),
 			),
 			propertiesfx.Module,
+			monitoring.Module,
 			httpapi.Module,
 			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
 		)
