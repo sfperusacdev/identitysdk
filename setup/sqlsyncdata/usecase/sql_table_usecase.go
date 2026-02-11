@@ -27,9 +27,10 @@ func NewSQLTableUsecase(descriptors TableDescriptors, repository *repos.SQLTable
 }
 
 type TableInfoResponse struct {
-	TableName string `json:"table_name"`
-	Script    string `json:"script"`
-	StartSync int64  `json:"start_sync"`
+	TableName     string `json:"table_name"`
+	Script        string `json:"script"`
+	StartSync     int64  `json:"start_sync"`
+	RetentionDays uint   `json:"retention_days"`
 }
 
 func (s *SQLTableUsecase) getDescriptor(tableName string) (*descriptor.TableDescriptor, error) {
@@ -52,15 +53,16 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 		if err != nil {
 			return nil, err
 		}
-		columns, err := s.repository.GetTableColumnNames(ctx, table)
+		columns, err := s.repository.GetTableColumns(ctx, table)
 		if err != nil {
 			return nil, err
 		}
 
 		tablescript = append(tablescript, TableInfoResponse{
-			TableName: table,
-			Script:    desc.BuildCreateTableStatement(columns),
-			StartSync: desc.StartSyncAt().UnixMilli(),
+			TableName:     table,
+			Script:        desc.BuildCreateTableStatement(columns),
+			StartSync:     desc.StartSyncAt().UnixMilli(),
+			RetentionDays: desc.SinceDays,
 		})
 	}
 	return tablescript, nil

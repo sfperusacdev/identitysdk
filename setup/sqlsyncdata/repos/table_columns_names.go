@@ -8,7 +8,11 @@ import (
 	"github.com/user0608/goones/errs"
 )
 
-func (r *SQLTableRepository) GetTableColumnNames(ctx context.Context, tableName string) ([]descriptor.TableColumn, error) {
+func (r *SQLTableRepository) GetTableColumns(ctx context.Context, tableName string) ([]descriptor.TableColumn, error) {
+	if columns, ok := r.cache.Get(tableName); ok {
+		return columns, nil
+	}
+
 	const query = `
 	SELECT b.relname                                       as table_name,
             a.attname                                       as column_name,
@@ -42,5 +46,6 @@ func (r *SQLTableRepository) GetTableColumnNames(ctx context.Context, tableName 
 	if rs.Error != nil {
 		return nil, errs.Pgf(rs.Error)
 	}
+	r.cache.Set(tableName, columns)
 	return columns, nil
 }

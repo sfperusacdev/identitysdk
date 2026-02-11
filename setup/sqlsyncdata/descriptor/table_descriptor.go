@@ -11,11 +11,11 @@ type TableDescriptor struct {
 	Table string `gorm:"primaryKey"`
 	// Physical name of the table in the database
 
-	Columns []string
 	// Columns allowed for reading / synchronization
+	Columns []string
 
-	Global bool
-	// Indicates whether the table is global (true) or domain-specific (false)
+	// Primary key prefixes that are exempt from the prefix validation rule %s
+	SkipPKPrefixCheckFilter []string
 
 	SinceDays uint
 	// Number of days back from now to start synchronization
@@ -58,6 +58,10 @@ type TableColumn struct {
 	Contype       string
 }
 
+func (tc TableColumn) IsPrimaryKey() bool {
+	return strings.ToLower(strings.TrimSpace(tc.Contype)) == primaryKeyKeyword
+}
+
 func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) string {
 	var builder strings.Builder
 
@@ -71,11 +75,9 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 
 	for _, col := range tableColumns {
 		columnName := strings.ToLower(col.ColumnName)
-		isPrimaryKey := strings.ToLower(strings.TrimSpace(col.Contype)) == primaryKeyKeyword
-		if !isPrimaryKey && !slices.Contains(allowedColumns, columnName) {
+		if !col.IsPrimaryKey() && !slices.Contains(allowedColumns, columnName) {
 			continue
 		}
-
 		if columnCount > 0 {
 			builder.WriteString(", ")
 		}
@@ -86,14 +88,13 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 
 		columnType := normalizeColumnType(col.ColumnType)
 		builder.WriteString(columnType)
-		builder.WriteByte(' ')
 
 		if strings.TrimSpace(col.ColumnNotNull) != "null" {
-			builder.WriteString(col.ColumnNotNull)
 			builder.WriteByte(' ')
+			builder.WriteString(col.ColumnNotNull)
 		}
 
-		if isPrimaryKey {
+		if col.IsPrimaryKey() {
 			primaryKeys = append(primaryKeys, columnName)
 			continue
 		}
@@ -121,4 +122,88 @@ func normalizeColumnType(columnType string) string {
 	default:
 		return columnType
 	}
+}
+
+func (td TableDescriptor) BuildSelectStatement(tableColumns []TableColumn, domain string, syncAt int64) (string, []any) {
+	var builder strings.Builder
+
+	fmt.Fprintf(&builder, "SELECT ")
+
+	allowedColumns := append([]string{}, td.Columns...)
+	allowedColumns = append(allowedColumns, defaultColumnNames...)
+
+	columnCount := 0
+	var primaryKeys []string
+	for _, col := range tableColumns {
+		columnName := strings.ToLower(col.ColumnName)
+		if !col.IsPrimaryKey() &&
+			!slices.Contains(allowedColumns, columnName) {
+			continue
+		}
+
+		if col.IsPrimaryKey() &&
+			!slices.Contains(td.SkipPKPrefixCheckFilter, columnName) {
+			primaryKeys = append(primaryKeys, columnName)
+		}
+
+		if columnCount > 0 {
+			builder.WriteString(", ")
+		}
+		columnCount++
+
+		builder.WriteString(columnName)
+	}
+
+	fmt.Fprintf(&builder, " FROM %s", td.Table)
+	var where []string
+	var whereArgs = []any{}
+
+	if len(primaryKeys) > 0 {
+		for _, p := range primaryKeys {
+			where = append(where, fmt.Sprintf("%s LIKE ?", p))
+			whereArgs = append(whereArgs, fmt.Sprintf("%s.%%", domain))
+		}
+	}
+
+	if !td.FullSync {
+		where = append(where, "sync_at > ?")
+		whereArgs = append(whereArgs, syncAt)
+	}
+
+	qry := builder.String()
+	if len(where) > 0 {
+		qry = fmt.Sprintf("%s WHERE %s", qry, strings.Join(where, " AND "))
+	}
+
+	return qry, whereArgs
+}
+
+func (td TableDescriptor) ValidateScope(
+	record map[string]any,
+	primaryKeys []string,
+	domain string,
+) error {
+	prefix := domain + "."
+	for _, pk := range primaryKeys {
+		pk = strings.ToLower(pk)
+
+		if slices.Contains(td.SkipPKPrefixCheckFilter, pk) {
+			continue
+		}
+
+		value, exists := record[pk]
+		if !exists {
+			return fmt.Errorf("falta el campo obligatorio de la clave: %s", pk)
+		}
+
+		strVal, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("el campo %s debe ser string para validar el dominio", pk)
+		}
+
+		if !strings.HasPrefix(strVal, prefix) {
+			return fmt.Errorf("el valor de %s no pertenece al dominio %q", pk, domain)
+		}
+	}
+	return nil
 }

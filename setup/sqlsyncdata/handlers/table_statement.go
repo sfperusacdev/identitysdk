@@ -10,6 +10,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	"github.com/sfperusacdev/identitysdk/setup/sqlsyncdata/usecase"
 	"github.com/user0608/goones/answer"
+	"go.uber.org/fx"
 )
 
 type GetTableSqlInfoHandler struct {
@@ -20,10 +21,13 @@ type GetTableSqlInfoHandler struct {
 
 var _ httpapi.Route = (*GetTableSqlInfoHandler)(nil)
 
-func NewGetTableSqlInfoHandler(usecase *usecase.SQLTableUsecase) *GetTableSqlInfoHandler {
+func NewGetTableSqlInfoHandler(lc fx.Lifecycle, usecase *usecase.SQLTableUsecase) *GetTableSqlInfoHandler {
+	executor := domainexecutor.NewDefault()
+	lc.Append(fx.Hook{OnStop: executor.Shutdown})
+
 	return &GetTableSqlInfoHandler{
 		usecase:  usecase,
-		executor: domainexecutor.NewDefault(),
+		executor: executor,
 	}
 }
 

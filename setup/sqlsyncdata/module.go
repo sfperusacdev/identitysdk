@@ -16,6 +16,7 @@ func LoadModule(descriptors ...descriptor.TableDescriptor) fx.Option {
 		fx.Provide(usecase.NewSQLTableUsecase),
 		fx.Provide(
 			httpapi.AsRoute(handlers.NewGetTableSqlInfoHandler),
+			httpapi.AsRoute(handlers.NewSqlTableSyncDataHandler),
 		),
 	)
 }
