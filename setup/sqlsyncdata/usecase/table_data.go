@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/user0608/goones/errs"
 )
 
 type TableSyncRequest struct {
@@ -64,6 +66,13 @@ func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req Tabl
 	descriptor, err := s.getDescriptor(req.TableName)
 	if err != nil {
 		return nil, err
+	}
+
+	if descriptor.ReadOnly && len(req.Payload) > 0 {
+		return nil, errs.BadRequestf(
+			"la tabla %s es de solo lectura y no permite operaciones de escritura",
+			req.TableName,
+		)
 	}
 
 	existingRows, err := s.repository.GetTableData(ctx, domain, *descriptor, req.SyncAt)

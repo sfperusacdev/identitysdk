@@ -8,8 +8,8 @@ import (
 )
 
 type TableDescriptor struct {
-	Table string `gorm:"primaryKey"`
 	// Physical name of the table in the database
+	Table string `gorm:"primaryKey"`
 
 	// Columns allowed for reading / synchronization
 	Columns []string
@@ -17,7 +17,6 @@ type TableDescriptor struct {
 	// Primary key prefixes that are exempt from the prefix validation rule %s
 	SkipPKPrefixCheckFilter []string
 
-	SinceDays uint
 	// Number of days back from now to start synchronization
 	// Only used when FullSync is false
 	// If the value is 0, the entire historical dataset is synchronized
@@ -25,10 +24,14 @@ type TableDescriptor struct {
 	// SyncDelay time.Duration
 	// Time subtracted from the last synchronization checkpoint
 	// Used to re-read a small overlap window and avoid missing recent changes
+	SinceDays uint
 
-	FullSync bool
 	// Indicates whether synchronization must be full
 	// When true, it takes precedence over SinceDays
+
+	FullSync bool
+
+	ReadOnly bool
 }
 
 func (td TableDescriptor) StartSyncAt() time.Time {
