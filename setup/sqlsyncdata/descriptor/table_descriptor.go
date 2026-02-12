@@ -64,6 +64,18 @@ func (tc TableColumn) IsPrimaryKey() bool {
 	return strings.ToLower(strings.TrimSpace(tc.Contype)) == primaryKeyKeyword
 }
 
+func (tc TableDescriptor) IsReadyOnly(tableColumns []TableColumn) bool {
+	if tc.ReadOnly {
+		return true
+	}
+	for _, col := range tableColumns {
+		if col.ColumnName == "sync_at" {
+			return false
+		}
+	}
+	return true
+}
+
 func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) string {
 	var builder strings.Builder
 
@@ -132,6 +144,10 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_sync_at ON %s(sync_at)", td.Table, td.Table)
 	}
 	return builder.String()
+}
+
+func (td TableDescriptor) isReadOnly() {
+
 }
 
 func normalizeColumnType(columnType string) string {

@@ -58,6 +58,11 @@ func (s *SQLTableUsecase) composePrimaryKey(tableName string, primaryKeys []stri
 func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req TableSyncRequest) (*TableSyncResponse, error) {
 	nowMillis := time.Now().UnixMilli()
 
+	tableColumns, err := s.repository.GetTableColumns(ctx, req.TableName)
+	if err != nil {
+		return nil, err
+	}
+
 	primaryKeys, err := s.repository.GetTablePrimaryKeys(ctx, req.TableName)
 	if err != nil {
 		return nil, err
@@ -68,7 +73,9 @@ func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req Tabl
 		return nil, err
 	}
 
-	if descriptor.ReadOnly && len(req.Payload) > 0 {
+	var isReadyOnly = descriptor.IsReadyOnly(tableColumns)
+
+	if isReadyOnly && len(req.Payload) > 0 {
 		return nil, errs.BadRequestf(
 			"la tabla %s es de solo lectura y no permite operaciones de escritura",
 			req.TableName,

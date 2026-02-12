@@ -31,6 +31,7 @@ type TableInfoResponse struct {
 	Script        string `json:"script"`
 	StartSync     int64  `json:"start_sync"`
 	RetentionDays uint   `json:"retention_days"`
+	ReadyOnly     bool   `json:"read_only"`
 }
 
 func (s *SQLTableUsecase) getDescriptor(tableName string) (*descriptor.TableDescriptor, error) {
@@ -57,12 +58,13 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 		if err != nil {
 			return nil, err
 		}
-
+		var isReadyOnly = desc.IsReadyOnly(columns)
 		tablescript = append(tablescript, TableInfoResponse{
 			TableName:     table,
 			Script:        desc.BuildCreateTableStatement(columns),
 			StartSync:     desc.StartSyncAt().UnixMilli(),
 			RetentionDays: desc.SinceDays,
+			ReadyOnly:     isReadyOnly,
 		})
 	}
 	return tablescript, nil
