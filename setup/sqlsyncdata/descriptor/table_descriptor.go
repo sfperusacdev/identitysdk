@@ -54,7 +54,6 @@ var defaultColumnNames = []string{
 const primaryKeyKeyword = "primary key"
 
 type TableColumn struct {
-	TableName     string
 	ColumnName    string
 	ColumnType    string
 	ColumnNotNull string
@@ -76,11 +75,22 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 	var primaryKeys []string
 	columnCount := 0
 
+	var hasSyncedAt bool
+	var hasDeletedAt bool
+
 	for _, col := range tableColumns {
 		columnName := strings.ToLower(col.ColumnName)
 		if !col.IsPrimaryKey() && !slices.Contains(allowedColumns, columnName) {
 			continue
 		}
+
+		switch columnName {
+		case "sync_at":
+			hasSyncedAt = true
+		case "deleted_at":
+			hasDeletedAt = true
+		}
+
 		if columnCount > 0 {
 			builder.WriteString(", ")
 		}
@@ -102,7 +112,10 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 			continue
 		}
 
-		builder.WriteString(col.Contype)
+		// if col.Contype != "" {
+		// 	builder.WriteByte(' ')
+		// 	builder.WriteString(col.Contype)
+		// }
 	}
 
 	if len(primaryKeys) > 0 {
@@ -112,7 +125,12 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 	}
 
 	builder.WriteByte(')')
-
+	if hasDeletedAt {
+		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_deleted_at ON %s(deleted_at)", td.Table, td.Table)
+	}
+	if hasSyncedAt {
+		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_sync_at ON %s(sync_at)", td.Table, td.Table)
+	}
 	return builder.String()
 }
 
