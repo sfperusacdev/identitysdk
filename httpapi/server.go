@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"strings"
 
 	"log/slog"
 	"net/http"
@@ -46,6 +47,10 @@ func newEchoServer(
 	// Middleware global
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "time=${time_unix}, method=${method}, uri=${uri}, status=${status}, ip=${remote_ip}, latency=${latency_human}\n",
+		Skipper: func(c echo.Context) bool {
+			return strings.Contains(c.Path(), "/api/v1/_/system_properties") &&
+				c.Request().Method == http.MethodGet
+		},
 	}))
 	e.Use(middleware.Recover())
 

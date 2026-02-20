@@ -152,6 +152,11 @@ func (r *SystemPropsPgProvider) GetJSON(ctx context.Context, key properties.Syst
 
 // RetriveAll implements properties.SystemPropertiesMutator.
 func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.DetailedSystemProperty, error) {
+	var tx = r.manager.Conn(ctx)
+	if tx.Dialector.Name() != "postgres" {
+		return []models.DetailedSystemProperty{}, nil
+	}
+
 	if err := r.ensureTable(ctx, identitysdk.Empresa(ctx)); err != nil {
 		return nil, err
 	}
@@ -170,7 +175,7 @@ func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.Detail
 		key LIKE ?
 	ORDER BY 
 		priority`
-	var tx = r.manager.Conn(ctx)
+
 	var entries = []models.DetailedSystemProperty{}
 	if rs := tx.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Error)}).
 		Raw(qry, prefix).Scan(&entries); rs.Error != nil {
@@ -197,7 +202,7 @@ func (r *SystemPropsPgProvider) Update(ctx context.Context, entries []models.Bas
 		tx := r.manager.Conn(ctx)
 
 		placeholders := make([]string, 0, len(entries))
-		values := make([]interface{}, 0, len(entries)*2)
+		values := make([]any, 0, len(entries)*2)
 		for _, entry := range entries {
 			placeholders = append(placeholders, "(?, ?)")
 			values = append(values, identitysdk.Empresa(ctx, entry.ID), entry.Value)
