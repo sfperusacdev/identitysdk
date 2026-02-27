@@ -443,6 +443,10 @@ func (s *Service) migrationCommand(use, shortDesc, migrationType string) *cobra.
 				slog.Error("Failed to establish database connection", "error", err)
 				os.Exit(1)
 			}
+			if db == nil {
+				slog.Info("db connecion is skipped")
+				return
+			}
 			goose.SetBaseFS(s.options.migrationsDir)
 			viewsFiles, err := s.getDB_views(s.options.migrationsDir)
 			if err != nil {
@@ -539,36 +543,38 @@ func (s *Service) Run(opts ...fx.Option) error {
 			goose.SetBaseFS(s.options.migrationsDir)
 
 			gormConn := connectionManager.Conn(ctx)
-			conn, err := gormConn.DB()
-			if err != nil {
-				slog.Error("Failed to retrieve database connection", "error", err)
-				os.Exit(1)
-			}
+			if gormConn != nil {
+				conn, err := gormConn.DB()
+				if err != nil {
+					slog.Error("Failed to retrieve database connection", "error", err)
+					os.Exit(1)
+				}
 
-			viewsFiles, err := s.getDB_views(s.options.migrationsDir)
-			if err != nil {
-				slog.Error("failed to load view definitions", "error", err)
-				os.Exit(1)
-			}
+				viewsFiles, err := s.getDB_views(s.options.migrationsDir)
+				if err != nil {
+					slog.Error("failed to load view definitions", "error", err)
+					os.Exit(1)
+				}
 
-			if err := s.drop_views(conn, viewsFiles); err != nil {
-				slog.Error("failed to drop views", "error", err)
-				os.Exit(1)
-			}
+				if err := s.drop_views(conn, viewsFiles); err != nil {
+					slog.Error("failed to drop views", "error", err)
+					os.Exit(1)
+				}
 
-			slog.Info("Running database migrations...")
-			err = goose.RunWithOptionsContext(ctx, "up", conn, "migrations", []string{})
-			if err != nil {
-				slog.Error("Error running migrations", "error", err)
-				os.Exit(1)
-			}
+				slog.Info("Running database migrations...")
+				err = goose.RunWithOptionsContext(ctx, "up", conn, "migrations", []string{})
+				if err != nil {
+					slog.Error("Error running migrations", "error", err)
+					os.Exit(1)
+				}
 
-			if err := s.recovery_view(conn, viewsFiles); err != nil {
-				slog.Error("failed to recreate views", "error", err)
-				os.Exit(1)
-			}
+				if err := s.recovery_view(conn, viewsFiles); err != nil {
+					slog.Error("failed to recreate views", "error", err)
+					os.Exit(1)
+				}
 
-			slog.Info("Migrations completed successfully")
+				slog.Info("Migrations completed successfully")
+			}
 		}
 
 		var systemProperties = []models.DetailedSystemProperty{}

@@ -15,6 +15,9 @@ func (r *SQLTableRepository) GetTableData(ctx context.Context, domain string, de
 	}
 	query, args := desc.BuildSelectStatement(columns, domain, syncAt)
 	var tx = r.manager.Conn(ctx)
+	if tx == nil {
+		return nil, errs.BadRequestDirect("Pg connection is not oppend")
+	}
 	var rows = []map[string]any{}
 	rs := tx.Raw(query, args...).Scan(&rows)
 	if rs.Error != nil {
@@ -29,6 +32,9 @@ func (r *SQLTableRepository) InsertData(ctx context.Context, tableName string, r
 	}
 
 	db := r.manager.Conn(ctx)
+	if db == nil {
+		return errs.BadRequestDirect("Pg connection is not oppend")
+	}
 
 	pkColumns, err := r.GetTablePrimaryKeys(ctx, tableName)
 	if err != nil {

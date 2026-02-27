@@ -3,6 +3,7 @@ package propsprovider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -58,6 +59,9 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 		data_type TEXT NOT NULL CHECK (data_type IN ('string', 'number', 'boolean', 'array', 'object'))
 	)`
 	var tx = r.manager.Conn(ctx)
+	if tx == nil {
+		return nil // skip
+	}
 	rs := tx.Session(&gorm.Session{Logger: logger.Discard}).Exec(script)
 	if rs.Error != nil {
 		return errs.Pgf(rs.Error)
@@ -100,6 +104,9 @@ func (r *SystemPropsPgProvider) GetStr(ctx context.Context, key properties.Syste
 	}
 	keyStr := identitysdk.Empresa(ctx, string(key))
 	conn := r.manager.Conn(ctx)
+	if conn == nil {
+		return "", errors.New("connection is not opend") // skip
+	}
 	var item PropItem
 	err := conn.Where("key = ?", keyStr).Select("key", "value").Find(&item).Error
 	if err != nil {
@@ -153,7 +160,7 @@ func (r *SystemPropsPgProvider) GetJSON(ctx context.Context, key properties.Syst
 // RetriveAll implements properties.SystemPropertiesMutator.
 func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.DetailedSystemProperty, error) {
 	var tx = r.manager.Conn(ctx)
-	if tx.Dialector.Name() != "postgres" {
+	if tx == nil || tx.Dialector.Name() != "postgres" {
 		return []models.DetailedSystemProperty{}, nil
 	}
 
@@ -200,6 +207,9 @@ func (r *SystemPropsPgProvider) Update(ctx context.Context, entries []models.Bas
 
 	return r.manager.WithTx(ctx, func(ctx context.Context) error {
 		tx := r.manager.Conn(ctx)
+		if tx == nil {
+			return errs.BadRequestDirect("pg db connection is not oppend")
+		}
 
 		placeholders := make([]string, 0, len(entries))
 		values := make([]any, 0, len(entries)*2)

@@ -41,6 +41,9 @@ func (r *SQLTableRepository) GetTableColumns(ctx context.Context, tableName stri
 	`
 
 	tx := r.manager.Conn(ctx)
+	if tx == nil {
+		return nil, errs.BadRequestDirect("Pg connection is not oppend")
+	}
 	var columns []descriptor.TableColumn
 	rs := tx.Raw(query, sql.Named("table", tableName)).Scan(&columns)
 	if rs.Error != nil {
