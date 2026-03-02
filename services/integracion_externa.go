@@ -72,8 +72,8 @@ func (s *ExternalBridgeService) IntegracionExternaSucursalCodigo(ctx context.Con
 func (s *ExternalBridgeService) integracionExternaURlSplit(val string) (string, bool) {
 	const suffix = ":ro"
 	val = strings.TrimSpace(val)
-	if strings.HasSuffix(val, suffix) {
-		var val = strings.TrimSuffix(val, suffix)
+	if before, ok := strings.CutSuffix(val, suffix); ok {
+		var val = before
 		return strings.TrimRight(val, "/"), true
 	}
 	return strings.TrimRight(val, "/"), false
@@ -112,4 +112,19 @@ func (s *ExternalBridgeService) IntegracionExternaURl(ctx context.Context, compa
 	integracioncache.DefaultCache.Set(ctx, company, apiresponse.Data)
 	val, readOnly := s.integracionExternaURlSplit(apiresponse.Data.IntegrationURL)
 	return val, readOnly, nil
+}
+
+func (s *ExternalBridgeService) IntegracionExternaCodigo_(ctx context.Context) (string, error) {
+	empresa := identitysdk.Empresa(ctx)
+	return s.IntegracionExternaCodigo(ctx, empresa)
+}
+
+func (s *ExternalBridgeService) IntegracionExternaSucursalCodigo_(ctx context.Context) (string, error) {
+	empresa, sucursal := identitysdk.Empresa_Sucursal(ctx)
+	return s.IntegracionExternaSucursalCodigo(ctx, empresa, sucursal)
+}
+
+func (s *ExternalBridgeService) IntegracionExternaURl_(ctx context.Context) (integrationURL string, readOnly bool, err error) {
+	empresa := identitysdk.Empresa(ctx)
+	return s.IntegracionExternaURl(ctx, empresa)
 }
