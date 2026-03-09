@@ -1,3 +1,42 @@
+// Package domainexecutor proporciona un ejecutor de tareas concurrente que garantiza
+// ejecución serial por dominio.
+//
+// Cada dominio tiene un "runner" dedicado que procesa sus tareas una a una en orden.
+// Esto asegura que dos tareas del mismo dominio nunca se ejecuten en paralelo,
+// mientras que tareas de dominios distintos sí pueden ejecutarse concurrentemente.
+//
+// Funcionamiento general:
+//
+// 1. Cuando se llama Execute(domain, task):
+//   - Se obtiene o crea un runner para ese dominio.
+//   - La tarea se encola en la cola del dominio.
+//   - El runner ejecuta las tareas secuencialmente.
+//
+// 2. Concurrencia:
+//   - Diferentes dominios se ejecutan en paralelo.
+//   - Dentro de un mismo dominio las tareas se ejecutan estrictamente una a la vez.
+//
+// 3. Control de cola:
+//   - QueueCapacity limita cuántas tareas pueden esperar por dominio.
+//   - Si la cola está llena, Execute espera hasta MaxWait para poder encolar.
+//   - Si el tiempo se supera, devuelve ErrTimeout.
+//
+// 4. Estados de tarea:
+//   - Se puede registrar un callback para recibir cambios de estado:
+//     pending → running → completed/failed/timeout/cancelled.
+//
+// 5. Evicción de dominios inactivos:
+//   - Si un dominio no recibe tareas durante IdleEvictAfter,
+//     su runner se elimina automáticamente para liberar recursos.
+//
+// 6. Shutdown:
+//   - Shutdown detiene el executor.
+//   - Cancela tareas en cola.
+//   - Espera a que las tareas en ejecución finalicen.
+//
+// Este patrón permite implementar procesamiento seguro por clave (dominio),
+// evitando condiciones de carrera cuando múltiples operaciones afectan
+// el mismo recurso lógico.
 package domainexecutor
 
 import (
@@ -28,9 +67,19 @@ var (
 )
 
 type Config struct {
-	MaxWait        time.Duration
+	// MaxWait tiempo máximo que Execute espera para:
+	// 1) poder poner la tarea en la cola del dominio
+	// 2) recibir el resultado de la ejecución
+	// si ese tiempo se supera, Execute devuelve ErrTimeout
+	MaxWait time.Duration
+
+	// IdleEvictAfter tiempo que un runner de dominio puede estar
+	// inactivo antes de ser eliminado
 	IdleEvictAfter time.Duration
-	QueueCapacity  int
+
+	// QueueCapacity número máximo de tareas que pueden quedar
+	// esperando en la cola por dominio
+	QueueCapacity int
 }
 
 type DomainExecutor struct {
@@ -77,6 +126,13 @@ func New(cfg Config) *DomainExecutor {
 	}
 }
 
+// Execute encola y ejecuta una tarea asociada a un dominio.
+// Devuelve:
+// - ErrExecutorClosed si el executor ya fue cerrado
+// - ErrDomainClosed si el runner del dominio fue cerrado
+// - ErrTimeout si se supera MaxWait esperando encolar o esperando el resultado
+// - error retornado por la Task si la ejecución falla
+// - nil si la Task termina correctamente
 func (e *DomainExecutor) Execute(ctx context.Context, domain string, task Task, cb StateCallback) error {
 	runner, err := e.getOrCreate(domain)
 	if err != nil {
