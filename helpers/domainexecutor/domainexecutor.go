@@ -8,6 +8,18 @@ import (
 )
 
 type Task func(ctx context.Context) error
+type TaskState string
+
+const (
+	StatePending   TaskState = "pending"
+	StateRunning   TaskState = "running"
+	StateCompleted TaskState = "completed"
+	StateFailed    TaskState = "failed"
+	StateTimeout   TaskState = "timeout"
+	StateCancelled TaskState = "cancelled"
+)
+
+type StateCallback func(state TaskState, err error)
 
 var (
 	ErrExecutorClosed = errors.New("domain executor closed")
@@ -42,6 +54,15 @@ type request struct {
 	ctx  context.Context
 	task Task
 	done chan error
+	cb   StateCallback
+}
+
+func NewDefault() *DomainExecutor {
+	return New(Config{
+		MaxWait:        10 * time.Second,
+		IdleEvictAfter: time.Minute,
+		QueueCapacity:  1,
+	})
 }
 
 func New(cfg Config) *DomainExecutor {
@@ -56,19 +77,7 @@ func New(cfg Config) *DomainExecutor {
 	}
 }
 
-func NewDefault() *DomainExecutor {
-	return &DomainExecutor{
-		runners: make(map[string]*domainRunner),
-		cfg: Config{
-			QueueCapacity:  1,
-			MaxWait:        10 * time.Second,
-			IdleEvictAfter: time.Minute,
-		},
-		stopCh: make(chan struct{}),
-	}
-}
-
-func (e *DomainExecutor) Execute(ctx context.Context, domain string, task Task) error {
+func (e *DomainExecutor) Execute(ctx context.Context, domain string, task Task, cb StateCallback) error {
 	runner, err := e.getOrCreate(domain)
 	if err != nil {
 		return err
@@ -85,6 +94,7 @@ func (e *DomainExecutor) Execute(ctx context.Context, domain string, task Task) 
 		ctx:  waitCtx,
 		task: task,
 		done: make(chan error, 1),
+		cb:   cb,
 	}
 
 	select {
@@ -103,21 +113,41 @@ func (e *DomainExecutor) Execute(ctx context.Context, domain string, task Task) 
 
 	select {
 	case runner.queue <- req:
+
+		if req.cb != nil {
+			req.cb(StatePending, nil)
+		}
+
 	case <-waitCtx.Done():
 		e.wgTasks.Done()
+		if req.cb != nil {
+			req.cb(StateTimeout, waitCtx.Err())
+		}
 		return ErrTimeout
+
 	case <-e.stopCh:
 		e.wgTasks.Done()
+		if req.cb != nil {
+			req.cb(StateCancelled, ErrExecutorClosed)
+		}
 		return ErrExecutorClosed
+
 	case <-runner.stop:
 		e.wgTasks.Done()
+		if req.cb != nil {
+			req.cb(StateCancelled, ErrDomainClosed)
+		}
 		return ErrDomainClosed
 	}
 
 	select {
 	case err := <-req.done:
 		return err
+
 	case <-waitCtx.Done():
+		if req.cb != nil {
+			req.cb(StateTimeout, waitCtx.Err())
+		}
 		return ErrTimeout
 	}
 }
@@ -220,7 +250,23 @@ func (e *DomainExecutor) runRunner(domain string, r *domainRunner) {
 
 		case req := <-r.queue:
 			resetTimer()
+
+			if req.cb != nil && req.ctx.Err() == nil {
+				req.cb(StateRunning, nil)
+			}
+
 			err := req.task(req.ctx)
+
+			if req.ctx.Err() == nil {
+				if req.cb != nil {
+					if err != nil {
+						req.cb(StateFailed, err)
+					} else {
+						req.cb(StateCompleted, nil)
+					}
+				}
+			}
+
 			req.done <- err
 			e.wgTasks.Done()
 
@@ -235,6 +281,9 @@ func (e *DomainExecutor) cancelQueued(r *domainRunner) {
 	for {
 		select {
 		case req := <-r.queue:
+			if req.cb != nil {
+				req.cb(StateCancelled, ErrDomainClosed)
+			}
 			req.done <- ErrDomainClosed
 			e.wgTasks.Done()
 		default:

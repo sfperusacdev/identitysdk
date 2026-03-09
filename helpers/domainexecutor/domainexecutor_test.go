@@ -36,7 +36,7 @@ func TestSerialExecutionPerDomain(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = exec.Execute(context.Background(), "a", task)
+			_ = exec.Execute(context.Background(), "a", task, nil)
 		}()
 	}
 
@@ -67,12 +67,12 @@ func TestParallelAcrossDomains(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		_ = exec.Execute(context.Background(), "a", task)
+		_ = exec.Execute(context.Background(), "a", task, nil)
 	}()
 
 	go func() {
 		defer wg.Done()
-		_ = exec.Execute(context.Background(), "b", task)
+		_ = exec.Execute(context.Background(), "b", task, nil)
 	}()
 
 	wg.Wait()
@@ -94,14 +94,14 @@ func TestTimeoutWaitingTurn(t *testing.T) {
 		_ = exec.Execute(context.Background(), "a", func(ctx context.Context) error {
 			<-block
 			return nil
-		})
+		}, nil)
 	}()
 
 	time.Sleep(20 * time.Millisecond)
 
 	err := exec.Execute(context.Background(), "a", func(ctx context.Context) error {
 		return nil
-	})
+	}, nil)
 
 	if err != ErrTimeout {
 		t.Fatalf("expected timeout got %v", err)
@@ -119,7 +119,7 @@ func TestIdleEviction(t *testing.T) {
 
 	if err := exec.Execute(context.Background(), "x", func(ctx context.Context) error {
 		return nil
-	}); err != nil {
+	}, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +127,7 @@ func TestIdleEviction(t *testing.T) {
 
 	if err := exec.Execute(context.Background(), "x", func(ctx context.Context) error {
 		return nil
-	}); err != nil {
+	}, nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -146,7 +146,7 @@ func TestShutdownGracefulWaits(t *testing.T) {
 			close(started)
 			<-finish
 			return nil
-		})
+		}, nil)
 	}()
 
 	<-started
@@ -204,7 +204,7 @@ func TestHighConcurrencySameDomain(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = exec.Execute(context.Background(), "z", task)
+			_ = exec.Execute(context.Background(), "z", task, nil)
 		}()
 	}
 
@@ -229,14 +229,14 @@ func TestTimeoutWhileWaitingTurn(t *testing.T) {
 		_ = exec.Execute(context.Background(), "a", func(ctx context.Context) error {
 			<-block
 			return nil
-		})
+		}, nil)
 	}()
 
 	time.Sleep(10 * time.Millisecond)
 
 	err := exec.Execute(context.Background(), "a", func(ctx context.Context) error {
 		return nil
-	})
+	}, nil)
 
 	if err != ErrTimeout {
 		t.Fatalf("expected ErrTimeout got %v", err)
@@ -258,7 +258,7 @@ func TestTimeoutDuringExecution(t *testing.T) {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-	})
+	}, nil)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
@@ -277,7 +277,7 @@ func TestContextCancelStopsWaiting(t *testing.T) {
 		_ = exec.Execute(context.Background(), "a", func(ctx context.Context) error {
 			<-block
 			return nil
-		})
+		}, nil)
 	}()
 
 	time.Sleep(10 * time.Millisecond)
@@ -287,7 +287,7 @@ func TestContextCancelStopsWaiting(t *testing.T) {
 
 	err := exec.Execute(ctx, "a", func(ctx context.Context) error {
 		return nil
-	})
+	}, nil)
 
 	if err == nil {
 		t.Fatal("expected cancel error")
@@ -309,7 +309,7 @@ func TestShutdownRejectsNewExecution(t *testing.T) {
 
 	err := exec.Execute(ctx, "x", func(ctx context.Context) error {
 		return nil
-	})
+	}, nil)
 
 	if err != ErrExecutorClosed {
 		t.Fatalf("expected ErrExecutorClosed got %v", err)
@@ -330,7 +330,7 @@ func TestShutdownWaitsForInflight(t *testing.T) {
 			close(start)
 			<-finish
 			return nil
-		})
+		}, nil)
 	}()
 
 	<-start
@@ -380,12 +380,12 @@ func TestDifferentDomainsDoNotBlock(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		_ = exec.Execute(context.Background(), "a", task)
+		_ = exec.Execute(context.Background(), "a", task, nil)
 	}()
 
 	go func() {
 		defer wg.Done()
-		_ = exec.Execute(context.Background(), "b", task)
+		_ = exec.Execute(context.Background(), "b", task, nil)
 	}()
 
 	wg.Wait()
@@ -423,7 +423,7 @@ func TestWaitsStrictlyOneAtTime(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = exec.Execute(context.Background(), "k", task)
+			_ = exec.Execute(context.Background(), "k", task, nil)
 		}()
 	}
 
@@ -433,5 +433,143 @@ func TestWaitsStrictlyOneAtTime(t *testing.T) {
 	case err := <-errCh:
 		t.Fatal(err)
 	default:
+	}
+}
+
+func TestStateTransitionsSuccess(t *testing.T) {
+	exec := New(Config{
+		MaxWait:       time.Second,
+		QueueCapacity: 1,
+	})
+
+	var states []TaskState
+	var mu sync.Mutex
+
+	cb := func(s TaskState, err error) {
+		mu.Lock()
+		states = append(states, s)
+		mu.Unlock()
+	}
+
+	err := exec.Execute(context.Background(), "a", func(ctx context.Context) error {
+		return nil
+	}, cb)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []TaskState{
+		StatePending,
+		StateRunning,
+		StateCompleted,
+	}
+
+	if len(states) != len(expected) {
+		t.Fatalf("expected %v got %v", expected, states)
+	}
+
+	for i := range expected {
+		if states[i] != expected[i] {
+			t.Fatalf("expected %v got %v", expected, states)
+		}
+	}
+}
+
+func TestStateFailed(t *testing.T) {
+	exec := New(Config{
+		MaxWait:       time.Second,
+		QueueCapacity: 1,
+	})
+
+	var last TaskState
+
+	cb := func(s TaskState, err error) {
+		last = s
+	}
+
+	err := exec.Execute(context.Background(), "a", func(ctx context.Context) error {
+		return errors.New("fail")
+	}, cb)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if last != StateFailed {
+		t.Fatalf("expected StateFailed got %v", last)
+	}
+}
+
+func TestStateTimeout(t *testing.T) {
+	exec := New(Config{
+		MaxWait:       30 * time.Millisecond,
+		QueueCapacity: 1,
+	})
+
+	var states []TaskState
+	var mu sync.Mutex
+
+	cb := func(s TaskState, err error) {
+		mu.Lock()
+		states = append(states, s)
+		mu.Unlock()
+	}
+
+	err := exec.Execute(context.Background(), "a", func(ctx context.Context) error {
+		time.Sleep(200 * time.Millisecond)
+		return nil
+	}, cb)
+
+	if err == nil {
+		t.Fatal("expected timeout")
+	}
+
+	found := false
+	for _, s := range states {
+		if s == StateTimeout {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("expected StateTimeout")
+	}
+}
+
+func TestStateCancelledDomainClose(t *testing.T) {
+	exec := New(Config{
+		MaxWait:       time.Second,
+		QueueCapacity: 1,
+	})
+
+	block := make(chan struct{})
+	started := make(chan struct{})
+
+	go func() {
+		_ = exec.Execute(context.Background(), "a", func(ctx context.Context) error {
+			close(started)
+			<-block
+			return nil
+		}, nil)
+	}()
+
+	<-started
+
+	done := make(chan struct{})
+
+	go func() {
+		_ = exec.Shutdown(context.Background())
+		close(done)
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+
+	close(block)
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("shutdown did not finish")
 	}
 }

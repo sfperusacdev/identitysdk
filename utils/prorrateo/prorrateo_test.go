@@ -251,3 +251,108 @@ func TestAllocateOverTime_RoundingPreservesTotal(t *testing.T) {
 		t.Fatalf("expected total 100, got %s", sum)
 	}
 }
+
+func TestRemainderDistributedAsUnitsInActiveOrder(t *testing.T) {
+	t0 := time.Now()
+
+	entities := []testEntity{
+		{start: t0, end: t0.Add(time.Hour)},
+		{start: t0, end: t0.Add(time.Hour)},
+		{start: t0, end: t0.Add(time.Hour)},
+	}
+
+	events := []testEvent{
+		{t: t0.Add(10 * time.Minute), v: decimal.RequireFromString("0.0002")},
+	}
+
+	got := AllocateOverTime(events, entities)
+
+	want := []decimal.Decimal{
+		decimal.RequireFromString("0.0001"),
+		decimal.RequireFromString("0.0001"),
+		decimal.RequireFromString("0"),
+	}
+
+	for i := range want {
+		if !got[i].Total.Equal(want[i]) {
+			t.Fatalf("entity %d expected %s, got %s", i, want[i], got[i].Total)
+		}
+	}
+}
+
+func TestUnevenSplitAllocatesBasePlusUnits(t *testing.T) {
+	t0 := time.Now()
+
+	entities := []testEntity{
+		{start: t0, end: t0.Add(time.Hour)},
+		{start: t0, end: t0.Add(time.Hour)},
+		{start: t0, end: t0.Add(time.Hour)},
+	}
+
+	events := []testEvent{
+		{t: t0.Add(10 * time.Minute), v: decimal.RequireFromString("100")},
+	}
+
+	got := AllocateOverTime(events, entities)
+
+	want := []decimal.Decimal{
+		decimal.RequireFromString("33.3334"),
+		decimal.RequireFromString("33.3333"),
+		decimal.RequireFromString("33.3333"),
+	}
+
+	for i := range want {
+		if !got[i].Total.Equal(want[i]) {
+			t.Fatalf("entity %d expected %s, got %s", i, want[i], got[i].Total)
+		}
+	}
+}
+
+func TestChangingEntryOrderChangesWhoGetsRemainder(t *testing.T) {
+	t0 := time.Now()
+
+	e1 := testEntity{start: t0, end: t0.Add(time.Hour)}
+	e2 := testEntity{start: t0, end: t0.Add(time.Hour)}
+	e3 := testEntity{start: t0, end: t0.Add(time.Hour)}
+
+	events := []testEvent{
+		{t: t0.Add(10 * time.Minute), v: decimal.RequireFromString("100")},
+	}
+
+	gotA := AllocateOverTime(events, []testEntity{e1, e2, e3})
+	gotB := AllocateOverTime(events, []testEntity{e3, e2, e1})
+
+	if !gotA[0].Total.Equal(decimal.RequireFromString("33.3334")) {
+		t.Fatalf("A[0] expected 33.3334, got %s", gotA[0].Total)
+	}
+	if !gotB[0].Total.Equal(decimal.RequireFromString("33.3334")) {
+		t.Fatalf("B[0] expected 33.3334, got %s", gotB[0].Total)
+	}
+}
+
+func TestOverlappingWindowsSplitOnlyAmongActive(t *testing.T) {
+	t0 := time.Now()
+
+	entities := []testEntity{
+		{start: t0, end: t0.Add(30 * time.Minute)},
+		{start: t0.Add(10 * time.Minute), end: t0.Add(40 * time.Minute)},
+	}
+
+	events := []testEvent{
+		{t: t0.Add(5 * time.Minute), v: decimal.RequireFromString("10")},
+		{t: t0.Add(20 * time.Minute), v: decimal.RequireFromString("10")},
+		{t: t0.Add(35 * time.Minute), v: decimal.RequireFromString("10")},
+	}
+
+	got := AllocateOverTime(events, entities)
+
+	want0 := decimal.RequireFromString("15")
+	want1 := decimal.RequireFromString("15")
+
+	if !got[0].Total.Equal(want0) {
+		t.Fatalf("entity 0 expected %s, got %s", want0, got[0].Total)
+	}
+	if !got[1].Total.Equal(want1) {
+		t.Fatalf("entity 1 expected %s, got %s", want1, got[1].Total)
+	}
+}

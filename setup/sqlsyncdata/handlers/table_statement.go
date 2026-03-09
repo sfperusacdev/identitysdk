@@ -47,7 +47,7 @@ func (h *GetTableSqlInfoHandler) HandleRequest(c echo.Context) error {
 		var err error
 		result, err = h.usecase.GetTablesStatement(ctx, tables)
 		return err
-	}); err != nil {
+	}, nil); err != nil {
 		return answer.Err(c, err)
 	}
 	return answer.Ok(c, result)
