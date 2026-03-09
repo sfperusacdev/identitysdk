@@ -586,7 +586,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			}
 			systemProperties = entries
 		}
-
+		opts = append([]fx.Option{fx.Invoke(s.setupIdentity)}, opts...)
 		opts = append(
 			opts,
 			fx.Supply(systemProperties),
@@ -632,7 +632,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			propertiesfx.Module,
 			monitoring.Module,
 			httpapi.Module,
-			fx.Invoke(s.setupIdentity, s.publishServiceDetails, httpapi.StartWebServer),
+			fx.Invoke(s.publishServiceDetails, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)
 		app.Run()
