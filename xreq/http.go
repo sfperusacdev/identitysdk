@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/user0608/goones/errs"
 )
 
 type RequestOptions struct {
@@ -105,8 +107,9 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			"error", err,
 			"baseurl", baseUrl,
 		)
-		return err
+		return errs.InternalError(err, "falló la construcción de la URL para %s%s", baseUrl, endpointPath)
 	}
+
 	req, err := http.NewRequestWithContext(ctx, options.Method, endpoint, options.RequestBody)
 	if err != nil {
 		slog.Error(
@@ -114,8 +117,9 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			"error", err,
 			"endpoint", endpoint,
 		)
-		return err
+		return errs.InternalError(err, "falló la creación de la request para %s", endpoint)
 	}
+
 	if options.QueryParams != nil {
 		req.URL.RawQuery = options.QueryParams.Encode()
 	}
@@ -130,7 +134,7 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		slog.Error("error on request", "error", err, "endpoint", endpoint, "method", options.Method)
-		return err
+		return errs.InternalError(err, "falló la petición %s a %s", options.Method, endpoint)
 	}
 	defer res.Body.Close()
 	jsonDecoder := json.NewDecoder(res.Body)
@@ -143,12 +147,12 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			return err
 		}
 		slog.Error("service response error", "message", apiResponse.Message)
-		return errors.New(apiResponse.Message)
+		return errs.InternalErrorDirect(apiResponse.Message)
 	}
 	if options.ResponseBody != nil {
 		if err := jsonDecoder.Decode(options.ResponseBody); err != nil {
 			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", endpointPath)
-			return err
+			return errs.InternalError(err, "falló la decodificación de la respuesta JSON de %s%s", baseUrl, endpointPath)
 		}
 	}
 	return nil
