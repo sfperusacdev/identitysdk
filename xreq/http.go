@@ -36,9 +36,25 @@ func WithAccessToken(accessToken string) RequestOption {
 	return WithHeader("X-Access-Token", accessToken)
 }
 
+func WithQueryParam(key string, value string) RequestOption {
+	return func(o *RequestOptions) {
+		if o.QueryParams == nil {
+			o.QueryParams = make(url.Values)
+		}
+		o.QueryParams.Set(key, value)
+	}
+}
+
 func WithQueryParams(params url.Values) RequestOption {
 	return func(o *RequestOptions) {
-		o.QueryParams = params
+		if o.QueryParams == nil {
+			o.QueryParams = make(url.Values)
+		}
+		for k, v := range params {
+			for _, val := range v {
+				o.QueryParams.Add(k, val)
+			}
+		}
 	}
 }
 

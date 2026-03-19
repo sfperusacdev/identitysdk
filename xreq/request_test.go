@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -307,19 +308,19 @@ func TestExternalBridgeService_MakeRequest_ErrorResponses(t *testing.T) {
 			name:         "404 Not Found",
 			statusCode:   http.StatusNotFound,
 			responseBody: `{"message":"resource not found"}`,
-			expectError:  "resource not found",
+			expectError:  "error: resource not found",
 		},
 		{
 			name:         "500 Internal Server Error",
 			statusCode:   http.StatusInternalServerError,
 			responseBody: `{"message":"internal server error"}`,
-			expectError:  "internal server error",
+			expectError:  "error: internal server error",
 		},
 		{
 			name:         "400 Bad Request",
 			statusCode:   http.StatusBadRequest,
 			responseBody: `{"message":"bad request"}`,
-			expectError:  "bad request",
+			expectError:  "error: bad request",
 		},
 	}
 
@@ -350,5 +351,84 @@ func TestExternalBridgeService_MakeRequest_ErrorResponses(t *testing.T) {
 				t.Fatalf("expected error message %q, got %q", tt.expectError, err.Error())
 			}
 		})
+	}
+}
+
+func TestWithQueryParam(t *testing.T) {
+	opts := &xreq.RequestOptions{}
+
+	xreq.WithQueryParam("a", "1")(opts)
+
+	if opts.QueryParams.Get("a") != "1" {
+		t.Fatalf("expected a=1, got %v", opts.QueryParams)
+	}
+}
+
+func TestWithQueryParam_Overwrite(t *testing.T) {
+	opts := &xreq.RequestOptions{
+		QueryParams: url.Values{"a": {"1"}},
+	}
+
+	xreq.WithQueryParam("a", "2")(opts)
+
+	if opts.QueryParams.Get("a") != "2" {
+		t.Fatalf("expected a=2, got %v", opts.QueryParams)
+	}
+}
+
+func TestWithQueryParams(t *testing.T) {
+	opts := &xreq.RequestOptions{}
+
+	params := url.Values{
+		"a": {"1", "2"},
+		"b": {"3"},
+	}
+
+	xreq.WithQueryParams(params)(opts)
+
+	if len(opts.QueryParams["a"]) != 2 || opts.QueryParams.Get("b") != "3" {
+		t.Fatalf("unexpected query params: %v", opts.QueryParams)
+	}
+}
+
+func TestWithQueryParams_Merge(t *testing.T) {
+	opts := &xreq.RequestOptions{
+		QueryParams: url.Values{
+			"a": {"1"},
+		},
+	}
+
+	params := url.Values{
+		"a": {"2"},
+		"b": {"3"},
+	}
+
+	xreq.WithQueryParams(params)(opts)
+
+	expected := url.Values{
+		"a": {"1", "2"},
+		"b": {"3"},
+	}
+
+	if !reflect.DeepEqual(opts.QueryParams, expected) {
+		t.Fatalf("expected %v, got %v", expected, opts.QueryParams)
+	}
+}
+
+func TestWithQueryParam_And_WithQueryParams_Order(t *testing.T) {
+	opts := &xreq.RequestOptions{}
+
+	xreq.WithQueryParam("a", "1")(opts)
+
+	params := url.Values{
+		"a": {"2"},
+	}
+
+	xreq.WithQueryParams(params)(opts)
+
+	values := opts.QueryParams["a"]
+
+	if len(values) != 2 || values[0] != "1" || values[1] != "2" {
+		t.Fatalf("unexpected values: %v", values)
 	}
 }
