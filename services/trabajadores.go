@@ -14,6 +14,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/user0608/goones/errs"
+	"github.com/user0608/goones/types"
 )
 
 func (s *ExternalBridgeService) GetTrabajadores(ctx context.Context, incluirInactivos bool) ([]entities.ResumenTrabajadorDto, error) {
@@ -139,7 +140,6 @@ func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (
 		slog.Error("error trying to retrieve `contratos` service url", "error", err)
 		return nil, err
 	}
-	// var mapa = map[string]any{}
 	var apiresponse struct {
 		Message string                   `json:"message"`
 		Data    []entities.TrabajadorDto `json:"data"`
@@ -157,4 +157,39 @@ func (s *ExternalBridgeService) GetMyInfo(ctx context.Context, empresa string) (
 		return nil, errs.BadRequestDirect("No se encontraron datos para el usuario o trabajador especificado.")
 	}
 	return &apiresponse.Data[0], nil
+}
+
+type TrabajadorAsisteciaItem struct {
+	Trabajador string         `json:"trabajador"`
+	Fecha      types.DateOnly `json:"fecha"`
+}
+
+func (s *ExternalBridgeService) TrabajadoresConAsistencia(ctx context.Context,
+	desde, hasta types.DateOnly,
+) ([]TrabajadorAsisteciaItem, error) {
+	company, token := s.readCompanyAndToken(ctx)
+	baseURL, err := identitysdk.GetAsistenciaServiceURL(ctx, company)
+	if err != nil {
+		slog.Error("error retrieving service URL", "error", err)
+		return nil, err
+	}
+
+	var response struct {
+		Message string                    `json:"message"`
+		Data    []TrabajadorAsisteciaItem `json:"data"`
+	}
+
+	if err := xreq.MakeRequest(
+		ctx,
+		baseURL,
+		"/v2/api/trabajadores/con-marcas/fecha",
+		xreq.WithAuthorization(token),
+		xreq.WithQueryParam("desde", desde.String()),
+		xreq.WithQueryParam("hasta", hasta.String()),
+		xreq.WithUnmarshalResponseInto(&response),
+	); err != nil {
+		return nil, err
+	}
+
+	return response.Data, nil
 }
