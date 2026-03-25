@@ -50,7 +50,7 @@ type ServiceDetails struct {
 }
 
 type StorageManagerProvider func() (connection.StorageManager, error)
-type ExternalBridgeServiceProvider func() (*identitysdk_services.ExternalBridgeService, error)
+type ExternalBridgeServiceProvider func(configProvider configs.GeneralServiceConfigProvider) (*identitysdk_services.ExternalBridgeService, error)
 
 type ServiceOptions struct {
 	configProvider                configs.ConfigsProviderFunc
@@ -135,8 +135,8 @@ func NewService(
 ) *Service {
 	options := &ServiceOptions{
 		configProvider: configs.DefaultConfigsProviderFunc,
-		externalBridgeServiceProvider: func() (*identitysdk_services.ExternalBridgeService, error) {
-			return identitysdk_services.NewExternalBridgeService(), nil
+		externalBridgeServiceProvider: func(configProvider configs.GeneralServiceConfigProvider) (*identitysdk_services.ExternalBridgeService, error) {
+			return identitysdk_services.NewExternalBridgeService(configProvider), nil
 		},
 	}
 	for _, apply := range opts {
