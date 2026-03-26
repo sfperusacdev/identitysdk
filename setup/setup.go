@@ -31,6 +31,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/scripting"
 	"github.com/sfperusacdev/identitysdk/helpers/signpdf"
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
+	"github.com/sfperusacdev/identitysdk/helpers/workflows"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/setup/sqlviews"
@@ -610,6 +611,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
 			fx.Provide(fotocheck.NewFotocheckBuilder),
 			fx.Provide(scripting.NewScriptCommonService),
+			fx.Provide(workflows.NewDocumentWorkflowStateManager),
 
 			fx.Provide(
 				fx.Annotate(
