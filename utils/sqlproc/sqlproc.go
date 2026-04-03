@@ -9,7 +9,7 @@ import (
 func ValidateProcedureDefinition(input string) error {
 	source := strings.TrimSpace(input)
 	if source == "" {
-		return newValidationError("input is empty", 0)
+		return newValidationError("input is empty", source, 0)
 	}
 
 	sc := newScanner(source)
@@ -22,73 +22,94 @@ func ValidateProcedureDefinition(input string) error {
 		return err
 	}
 
-	if err := sc.readRequiredKeyword("BEGIN", "expected BEGIN after AS"); err != nil {
+	if err := sc.validateProcedureBodyStructure(); err != nil {
 		return err
 	}
 
-	blockDepth := 1
-
-	for !sc.eof() {
-		if sc.skipWhitespaceAndComments() {
-			continue
-		}
-
-		if err := sc.tryReadStringLiteral(); err == nil {
-			continue
-		} else if err != errNotAStringLiteral {
-			return err
-		}
-
-		token, ok := sc.readToken()
-		if !ok {
-			sc.pos++
-			continue
-		}
-
-		switch strings.ToUpper(token) {
-		case "BEGIN":
-			blockDepth++
-		case "END":
-			blockDepth--
-			if blockDepth < 0 {
-				return newValidationError("unexpected END token", sc.pos)
-			}
-
-			if blockDepth == 0 {
-				sc.skipWhitespaceAndComments()
-
-				if sc.peek() == ';' {
-					sc.pos++
-				}
-
-				sc.skipWhitespaceAndComments()
-
-				if !sc.eof() {
-					return newValidationError("unexpected content found after the final END of the procedure", sc.pos)
-				}
-
-				return nil
-			}
-		}
-	}
-
-	return newValidationError("missing END for the outermost procedure block", sc.pos)
+	return nil
 }
 
 type ValidationError struct {
 	Message  string
 	Position int
+	Line     int
+	Column   int
+	Snippet  string
+	Pointer  string
 }
 
 func (e *ValidationError) Error() string {
-	return fmt.Sprintf("%s at position %d", e.Message, e.Position)
+	if e.Snippet == "" {
+		return fmt.Sprintf("%s at line %d, column %d", e.Message, e.Line, e.Column)
+	}
+
+	return fmt.Sprintf(
+		"%s at line %d, column %d\n%s\n%s",
+		e.Message,
+		e.Line,
+		e.Column,
+		e.Snippet,
+		e.Pointer,
+	)
 }
 
-func newValidationError(message string, position int) error {
+func newValidationError(message string, source string, position int) error {
+	line, column, snippet, pointer := buildErrorContext(source, position)
 	return &ValidationError{
 		Message:  message,
 		Position: position,
+		Line:     line,
+		Column:   column,
+		Snippet:  snippet,
+		Pointer:  pointer,
 	}
+}
+
+func buildErrorContext(source string, position int) (int, int, string, string) {
+	if position < 0 {
+		position = 0
+	}
+	if position > len(source) {
+		position = len(source)
+	}
+
+	line := 1
+	column := 1
+	lineStart := 0
+
+	for i := 0; i < position; i++ {
+		if source[i] == '\n' {
+			line++
+			column = 1
+			lineStart = i + 1
+		} else {
+			column++
+		}
+	}
+
+	lineEnd := len(source)
+	for i := lineStart; i < len(source); i++ {
+		if source[i] == '\n' {
+			lineEnd = i
+			break
+		}
+	}
+
+	snippet := source[lineStart:lineEnd]
+	if snippet == "" {
+		return line, column, snippet, ""
+	}
+
+	pointerPos := position - lineStart
+	if pointerPos < 0 {
+		pointerPos = 0
+	}
+	if pointerPos > len(snippet) {
+		pointerPos = len(snippet)
+	}
+
+	pointer := strings.Repeat(" ", pointerPos) + "^"
+	return line, column, snippet, pointer
 }
 
 var errNotAStringLiteral = fmt.Errorf("not a string literal")
@@ -157,9 +178,8 @@ func (s *scanner) skipBlockComment() bool {
 			s.pos++
 		}
 
-		returnValue := newValidationError("unterminated block comment", start)
-		_ = returnValue
 		s.pos = s.length
+		_ = start
 		return true
 	}
 
@@ -206,7 +226,7 @@ func (s *scanner) tryReadStringLiteral() error {
 		s.pos++
 	}
 
-	return newValidationError("unterminated string literal", start)
+	return newValidationError("unterminated string literal", s.source, start)
 }
 
 func (s *scanner) readToken() (string, bool) {
@@ -256,11 +276,11 @@ func (s *scanner) readRequiredKeyword(expected string, message string) error {
 	start := s.pos
 	token, ok := s.readToken()
 	if !ok {
-		return newValidationError(message, start)
+		return newValidationError(message, s.source, start)
 	}
 
 	if !strings.EqualFold(token, expected) {
-		return newValidationError(message, start)
+		return newValidationError(message, s.source, start)
 	}
 
 	return nil
@@ -289,12 +309,12 @@ func (s *scanner) readProcedureHeader() error {
 		s.skipWhitespaceAndComments()
 
 		token, ok := s.readToken()
-		if ok && strings.EqualFold(token, "AS") {
-			s.pos = checkpoint
-			return nil
-		}
 		if ok {
-			s.pos = checkpoint
+			if strings.EqualFold(token, "AS") {
+				s.pos = checkpoint
+				return nil
+			}
+			continue
 		}
 
 		if err := s.tryReadStringLiteral(); err == nil {
@@ -308,14 +328,114 @@ func (s *scanner) readProcedureHeader() error {
 		}
 
 		if s.eof() {
-			return newValidationError("missing AS in procedure definition", s.pos)
+			return newValidationError("missing AS in procedure definition", s.source, s.pos)
 		}
 
 		s.pos++
 
 		if s.pos == checkpoint {
-			return newValidationError("could not parse procedure header", s.pos)
+			return newValidationError("could not parse procedure header", s.source, s.pos)
 		}
+	}
+}
+func (s *scanner) validateProcedureBodyStructure() error {
+	s.skipWhitespaceAndComments()
+
+	if s.eof() {
+		return newValidationError("expected procedure body after AS", s.source, s.pos)
+	}
+
+	bodyStart := s.pos
+
+	blockDepth := 0
+	caseDepth := 0
+	sawBeginBlock := false
+
+	for !s.eof() {
+		if s.skipWhitespaceAndComments() {
+			continue
+		}
+
+		if err := s.tryReadStringLiteral(); err == nil {
+			continue
+		} else if err != errNotAStringLiteral {
+			return err
+		}
+
+		tokenStart := s.pos
+		token, ok := s.readToken()
+		if !ok {
+			s.pos++
+			continue
+		}
+
+		switch strings.ToUpper(token) {
+		case "BEGIN":
+			nextToken, _ := s.peekNextSignificantToken()
+			if strings.EqualFold(nextToken, "TRAN") || strings.EqualFold(nextToken, "TRANSACTION") {
+				continue
+			}
+			sawBeginBlock = true
+			blockDepth++
+
+		case "CASE":
+			caseDepth++
+
+		case "END":
+			if caseDepth > 0 {
+				caseDepth--
+				continue
+			}
+
+			if blockDepth > 0 {
+				blockDepth--
+				continue
+			}
+
+			return newValidationError("unexpected END token", s.source, tokenStart)
+		}
+	}
+
+	if caseDepth > 0 {
+		return newValidationError("missing END for CASE expression", s.source, s.length)
+	}
+
+	if sawBeginBlock && blockDepth > 0 {
+		return newValidationError("missing END for BEGIN block", s.source, s.length)
+	}
+
+	if bodyStart >= s.length {
+		return newValidationError("expected procedure body after AS", s.source, bodyStart)
+	}
+
+	return nil
+}
+
+func (s *scanner) peekNextSignificantToken() (string, bool) {
+	checkpoint := s.pos
+	defer func() {
+		s.pos = checkpoint
+	}()
+
+	for {
+		s.skipWhitespaceAndComments()
+
+		if err := s.tryReadStringLiteral(); err == nil {
+			continue
+		} else if err != errNotAStringLiteral {
+			return "", false
+		}
+
+		token, ok := s.readToken()
+		if ok {
+			return token, true
+		}
+
+		if s.eof() {
+			return "", false
+		}
+
+		s.pos++
 	}
 }
 
@@ -324,7 +444,7 @@ func (s *scanner) readCreateClause() error {
 
 	token, ok := s.readToken()
 	if !ok {
-		return newValidationError("expected CREATE, ALTER, or CREATE OR ALTER", start)
+		return newValidationError("expected CREATE, ALTER, or CREATE OR ALTER", s.source, start)
 	}
 
 	if strings.EqualFold(token, "ALTER") {
@@ -332,7 +452,7 @@ func (s *scanner) readCreateClause() error {
 	}
 
 	if !strings.EqualFold(token, "CREATE") {
-		return newValidationError("expected CREATE, ALTER, or CREATE OR ALTER", start)
+		return newValidationError("expected CREATE, ALTER, or CREATE OR ALTER", s.source, start)
 	}
 
 	checkpoint := s.pos
@@ -362,21 +482,21 @@ func (s *scanner) readProcedureKeyword() error {
 	start := s.pos
 	token, ok := s.readToken()
 	if !ok {
-		return newValidationError("expected PROCEDURE or PROC", start)
+		return newValidationError("expected PROCEDURE or PROC", s.source, start)
 	}
 
 	if strings.EqualFold(token, "PROCEDURE") || strings.EqualFold(token, "PROC") {
 		return nil
 	}
 
-	return newValidationError("expected PROCEDURE or PROC", start)
+	return newValidationError("expected PROCEDURE or PROC", s.source, start)
 }
 
 func (s *scanner) readProcedureName() error {
 	start := s.pos
 
 	if _, err := s.readNamePart(); err != nil {
-		return newValidationError("expected procedure name", start)
+		return newValidationError("expected procedure name", s.source, start)
 	}
 
 	checkpoint := s.pos
@@ -391,7 +511,7 @@ func (s *scanner) readProcedureName() error {
 	s.skipWhitespaceAndComments()
 
 	if _, err := s.readNamePart(); err != nil {
-		return newValidationError("invalid procedure name after schema qualifier", s.pos)
+		return newValidationError("invalid procedure name after schema qualifier", s.source, s.pos)
 	}
 
 	return nil
@@ -399,7 +519,7 @@ func (s *scanner) readProcedureName() error {
 
 func (s *scanner) readNamePart() (string, error) {
 	if s.eof() {
-		return "", newValidationError("unexpected empty identifier", s.pos)
+		return "", newValidationError("unexpected empty identifier", s.source, s.pos)
 	}
 
 	start := s.pos
@@ -410,15 +530,15 @@ func (s *scanner) readNamePart() (string, error) {
 			s.pos++
 		}
 		if s.eof() {
-			return "", newValidationError("unterminated bracketed identifier", start)
+			return "", newValidationError("unterminated bracketed identifier", s.source, start)
 		}
 		s.pos++
 		return s.source[start:s.pos], nil
 	}
 
 	r := rune(s.source[s.pos])
-	if !unicode.IsLetter(r) && s.source[s.pos] != '_' {
-		return "", newValidationError("invalid identifier", start)
+	if !unicode.IsLetter(r) && s.source[s.pos] != '_' && s.source[s.pos] != '#' {
+		return "", newValidationError("invalid identifier", s.source, start)
 	}
 
 	s.pos++

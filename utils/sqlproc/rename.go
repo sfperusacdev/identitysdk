@@ -1,6 +1,8 @@
 package sqlproc
 
 import (
+	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,15 +22,16 @@ func RenameProcedureDefinition(input string) (string, string, error) {
 func ReplaceProcedureName(input string, newName string) (string, error) {
 	source := strings.TrimSpace(input)
 	if source == "" {
-		return "", newValidationError("input is empty", 0)
+		return "", fmt.Errorf("input is empty")
 	}
 
 	if strings.TrimSpace(newName) == "" {
-		return "", newValidationError("new procedure name is empty", 0)
+		return "", fmt.Errorf("new procedure name is empty")
 	}
 
 	if err := ValidateProcedureDefinition(source); err != nil {
-		return "", err
+		slog.Error("procedure definition validation failed", "error", err)
+		return "", fmt.Errorf("invalid procedure definition")
 	}
 
 	nameStart, nameEnd, err := locateProcedureNameRange(source)
@@ -54,7 +57,7 @@ func locateProcedureNameRange(source string) (int, int, error) {
 	nameStart := sc.pos
 
 	if _, err := sc.readNamePart(); err != nil {
-		return 0, 0, newValidationError("expected procedure name", nameStart)
+		return 0, 0, fmt.Errorf("expected procedure name at position %d", nameStart)
 	}
 
 	checkpoint := sc.pos
@@ -65,7 +68,7 @@ func locateProcedureNameRange(source string) (int, int, error) {
 		sc.skipWhitespaceAndComments()
 
 		if _, err := sc.readNamePart(); err != nil {
-			return 0, 0, newValidationError("invalid procedure name after schema qualifier", sc.pos)
+			return 0, 0, fmt.Errorf("invalid procedure name after schema qualifier at position %d", sc.pos)
 		}
 	} else {
 		sc.pos = checkpoint

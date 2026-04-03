@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -34,7 +33,8 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/workflows"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
-	"github.com/sfperusacdev/identitysdk/setup/sqlviews"
+	"github.com/sfperusacdev/identitysdk/utils/sqlreader"
+	"github.com/sfperusacdev/identitysdk/utils/sqlviews"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
@@ -316,56 +316,30 @@ type DbViewFile struct {
 }
 
 func (s *Service) getDB_views(fsys fs.FS) ([]DbViewFile, error) {
-	baseDir := "migrations/_views"
-
-	entries, err := fs.ReadDir(fsys, baseDir)
+	sqlFiles, err := sqlreader.LoadSQLFiles(fsys, "migrations/_views")
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return []DbViewFile{}, nil
 	case err != nil:
 		slog.Error(
-			"failed to read views directory",
-			"dir", baseDir,
+			"failed to load view sql files",
+			"dir", "migrations/_views",
 			"error", err,
 		)
 		return nil, err
 	}
 
-	var result []DbViewFile
+	result := make([]DbViewFile, 0, len(sqlFiles))
 
-	for _, entry := range entries {
-		if entry.IsDir() {
+	for _, file := range sqlFiles {
+		if file.Content == "" {
 			continue
 		}
-
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".sql") {
-			continue
-		}
-
-		path := filepath.Join(baseDir, name)
-
-		content, err := fs.ReadFile(fsys, path)
-		if err != nil {
-			slog.Error(
-				"failed to read sql file",
-				"path", path,
-				"error", err,
-			)
-			return nil, err
-		}
-
-		if len(content) == 0 {
-			continue
-		}
-
-		sqlText := string(content)
-		views := sqlviews.FindViewNames(sqlText)
 
 		result = append(result, DbViewFile{
-			FileName: name,
-			SQL:      sqlText,
-			Views:    views,
+			FileName: file.Name,
+			SQL:      file.Content,
+			Views:    sqlviews.FindViewNames(file.Content),
 		})
 	}
 
