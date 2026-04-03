@@ -32,20 +32,25 @@ func renameProcedureWithRandomName(input string, temporal bool) (ProcedureDefini
 	if err != nil {
 		return ProcedureDefinition{}, err
 	}
+
 	parsed, err := sqlutil.ParseSQLServerIdentifier(originalName)
 	if err != nil {
 		return ProcedureDefinition{}, err
 	}
-	name := fmt.Sprintf("p_%s", randomtext.String(20))
-	if temporal {
-		name = fmt.Sprintf("#%s", name)
-	}
-	procedureIdentifier := sqlutil.SQLServerIdentifier{
-		ObjectName: fmt.Sprintf("p_%s", randomtext.String(20)),
+
+	objectName := fmt.Sprintf("p_%s", randomtext.String(20))
+	identifier := sqlutil.SQLServerIdentifier{
+		ObjectName: objectName,
 		SchemaPath: parsed.SchemaPath,
 	}
 
-	return RenameProcedure(source, procedureIdentifier.String())
+	if temporal {
+		identifier = sqlutil.SQLServerIdentifier{
+			ObjectName: "#" + objectName,
+		}
+	}
+
+	return RenameProcedure(source, identifier.String())
 }
 
 func RenameProcedure(input string, newName string) (ProcedureDefinition, error) {
