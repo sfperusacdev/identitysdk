@@ -15,6 +15,14 @@ type ProcedureDefinition struct {
 }
 
 func RenameProcedureWithRandomName(input string) (ProcedureDefinition, error) {
+	return renameProcedureWithRandomName(input, false)
+}
+
+func RenameProcedureWithTemporalRandomName(input string) (ProcedureDefinition, error) {
+	return renameProcedureWithRandomName(input, true)
+}
+
+func renameProcedureWithRandomName(input string, temporal bool) (ProcedureDefinition, error) {
 	source := strings.TrimSpace(input)
 	if source == "" {
 		return ProcedureDefinition{}, fmt.Errorf("input is empty")
@@ -28,13 +36,16 @@ func RenameProcedureWithRandomName(input string) (ProcedureDefinition, error) {
 	if err != nil {
 		return ProcedureDefinition{}, err
 	}
-
-	name := sqlutil.SQLServerIdentifier{
+	name := fmt.Sprintf("p_%s", randomtext.String(20))
+	if temporal {
+		name = fmt.Sprintf("#%s", name)
+	}
+	procedureIdentifier := sqlutil.SQLServerIdentifier{
 		ObjectName: fmt.Sprintf("p_%s", randomtext.String(20)),
 		SchemaPath: parsed.SchemaPath,
 	}
 
-	return RenameProcedure(source, name.String())
+	return RenameProcedure(source, procedureIdentifier.String())
 }
 
 func RenameProcedure(input string, newName string) (ProcedureDefinition, error) {
