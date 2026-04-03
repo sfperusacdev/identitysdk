@@ -33,8 +33,8 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/workflows"
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
-	"github.com/sfperusacdev/identitysdk/utils/sqlreader"
-	"github.com/sfperusacdev/identitysdk/utils/sqlviews"
+	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
+	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"

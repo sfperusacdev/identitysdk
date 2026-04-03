@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/sfperusacdev/identitysdk/utils/sqlreader"
+	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
 )
 
 func TestLoadSQLFiles(t *testing.T) {

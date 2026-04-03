@@ -11,6 +11,7 @@ require (
 	github.com/aws/smithy-go v1.22.3
 	github.com/boombuler/barcode v1.1.0
 	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
+	github.com/fatih/color v1.19.0
 	github.com/gabriel-vasile/mimetype v1.4.9
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
@@ -54,7 +55,6 @@ require (
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.9.1 // indirect
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
