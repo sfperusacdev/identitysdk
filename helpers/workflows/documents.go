@@ -50,13 +50,14 @@ type StateChange struct {
 }
 
 type ChangeStateRequest struct {
-	Username          string
-	Entity            EntityConfig
-	Change            StateChange
-	Targets           []string
-	AllowPartial      bool
-	wf                *workflows_entities.Workflow
-	ifStateIsEmptyUse DocumentState
+	Username                string
+	Entity                  EntityConfig
+	Change                  StateChange
+	Targets                 []string
+	AllowPartial            bool
+	RequireSameInitialState bool
+	wf                      *workflows_entities.Workflow
+	ifStateIsEmptyUse       DocumentState
 }
 
 type Entity struct {
@@ -64,9 +65,9 @@ type Entity struct {
 	State string
 }
 
-func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req ChangeStateRequest) error {
+func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req ChangeStateRequest) ([]string, error) {
 	if len(req.Targets) == 0 {
-		return nil
+		return []string{}, nil
 	}
 
 	if req.Username == "" {
@@ -76,18 +77,18 @@ func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req Chan
 		req.Entity.PrimaryKeyColumn = "codigo"
 	}
 	if req.Entity.StateColumn == "" {
-		req.Entity.PrimaryKeyColumn = "estado"
+		req.Entity.StateColumn = "estado"
 	}
 	if req.wf == nil {
 		wf, err := m.bridge.GetWorkflow(ctx, req.Change.Doc)
 		if err != nil {
-			return errs.InternalErrorDirect(err.Error())
+			return nil, errs.InternalErrorDirect(err.Error())
 		}
 		req.wf = wf
 	}
 
 	if req.wf.Codigo != req.Change.Doc {
-		return errs.BadRequestf(
+		return nil, errs.BadRequestf(
 			"el documento '%s' no coincide con el workflow '%s'",
 			req.Change.Doc, req.wf.Codigo,
 		)
@@ -104,20 +105,26 @@ func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req Chan
 	).Scan(&records)
 
 	if rs.Error != nil {
-		return errs.Pgf(rs.Error)
+		return nil, errs.Pgf(rs.Error)
 	}
 
 	var affectedTargets = []string{}
 	var listErrors = []error{}
-
+	var initialStates = make(map[string]struct{})
 	for _, r := range records {
 		var currentState = strings.TrimSpace(r.State)
 		if currentState == "" {
-			currentState = string(DocumentStatePending)
+			if req.ifStateIsEmptyUse != "" {
+				currentState = string(req.ifStateIsEmptyUse)
+			} else {
+				currentState = string(DocumentStatePending)
+			}
 		}
+
+		initialStates[currentState] = struct{}{}
 		err := req.wf.CheckTransition(workflows_entities.TransitionRequest{
 			Username:       req.Username,
-			From:           identitysdk.Empresa(ctx, r.State),
+			From:           identitysdk.Empresa(ctx, currentState),
 			To:             identitysdk.Empresa(ctx, req.Change.TargetState),
 			DocumentAmount: req.Change.DocumentAmount,
 			PeriodAmount:   req.Change.PeriodAmount,
@@ -128,21 +135,23 @@ func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req Chan
 		}
 		affectedTargets = append(affectedTargets, r.Code)
 	}
-
+	if req.RequireSameInitialState && len(initialStates) > 1 {
+		return nil, errs.BadRequestf("todos los documentos deben tener el mismo estado inicial")
+	}
 	if !req.AllowPartial && len(listErrors) > 0 {
 		if len(req.Targets) == 1 {
-			return errs.BadRequestDirect(listErrors[0].Error())
+			return nil, errs.BadRequestDirect(listErrors[0].Error())
 		}
-		return errs.BadRequestf("no todos los documentos pueden ser actualizados")
+		return nil, errs.BadRequestf("no todos los documentos pueden ser actualizados")
 	}
-
-	if len(affectedTargets) > 0 {
-		rs := tx.Table(req.Entity.TableName).
-			Where(fmt.Sprintf("%s in ?", req.Entity.PrimaryKeyColumn), affectedTargets).
-			Update(req.Entity.StateColumn, identitysdk.RemovePrefix(req.Change.TargetState))
-
-		return errs.Pgf(rs.Error)
+	if len(affectedTargets) == 0 {
+		return []string{}, nil
 	}
-
-	return nil
+	rs = tx.Table(req.Entity.TableName).
+		Where(fmt.Sprintf("%s in ?", req.Entity.PrimaryKeyColumn), affectedTargets).
+		Update(req.Entity.StateColumn, identitysdk.RemovePrefix(req.Change.TargetState))
+	if rs.Error != nil {
+		return nil, errs.Pgf(rs.Error)
+	}
+	return affectedTargets, nil
 }
