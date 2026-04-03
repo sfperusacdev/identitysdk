@@ -96,10 +96,13 @@ func ExtractProcedureName(input string) (string, error) {
 
 func locateProcedureNameRange(source string) (int, int, error) {
 	sc := newScanner(source)
+	sc.skipWhitespaceAndComments()
 
 	if err := sc.readCreateClause(); err != nil {
 		return 0, 0, err
 	}
+
+	sc.skipWhitespaceAndComments()
 
 	if err := sc.readProcedureKeyword(); err != nil {
 		return 0, 0, err

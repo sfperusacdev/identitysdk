@@ -16,6 +16,7 @@ func TestValidateProcedureDefinition(t *testing.T) {
 		{
 			name: "valid_create_procedure_basic",
 			input: `
+-- TEST: dbo.usp_Test
 CREATE PROCEDURE dbo.usp_Test
 AS
 SELECT 1

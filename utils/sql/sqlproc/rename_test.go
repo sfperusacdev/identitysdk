@@ -241,11 +241,19 @@ func TestExtractProcedureName(t *testing.T) {
 		{
 			name: "unqualified_name",
 			input: `
-CREATE PROCEDURE MyProc
+-- TEST: dbo.usp_Test
+CREATE PROCEDURE
+-- TEST: dbo.usp_Test
+ MyProc
+-- TEST: dbo.usp_Test
 AS
+-- TEST: dbo.usp_Test
 BEGIN
+-- TEST: dbo.usp_Test
 	SELECT 1
+	-- TEST: dbo.usp_Test
 END
+-- TEST: dbo.usp_Test
 `,
 			expected: "MyProc",
 		},
