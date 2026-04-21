@@ -38,7 +38,29 @@ func RequestStrings(c echo.Context) ([]string, error) {
 		return nil, errs.BadRequestError(err, "invalid request body")
 	}
 
-	keys := []string{"code", "codes", "value", "values", "string", "strings"}
+	keys := []string{
+		"code",
+		"codes",
+		"codigo",
+		"codigos",
+
+		"value",
+		"values",
+		"valor",
+		"valores",
+
+		"string",
+		"strings",
+
+		"text",
+		"texts",
+
+		"key",
+		"keys",
+
+		"id",
+		"ids",
+	}
 
 	for _, k := range keys {
 		if raw, ok := payload[k]; ok {
