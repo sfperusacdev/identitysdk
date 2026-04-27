@@ -16,7 +16,7 @@ func RequestUUIDs(c echo.Context) ([]uuid.UUID, error) {
 		return nil, errs.BadRequestError(err, "invalid request body")
 	}
 
-	keys := []string{"code", "codes", "uuid", "uuids", "values"}
+	keys := []string{"code", "codes", "id", "ids", "uuid", "uuids", "values"}
 
 	for _, k := range keys {
 		if raw, ok := payload[k]; ok {

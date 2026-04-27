@@ -11,8 +11,6 @@ import (
 	"github.com/sfperusacdev/identitysdk/binds"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/user0608/goones/types"
 )
 
 func newContext(body string) echo.Context {
@@ -34,33 +32,76 @@ func TestRequestUUIDs(t *testing.T) {
 	tests := []struct {
 		name    string
 		body    string
-		want    types.UUIDArray
+		want    []uuid.UUID
 		wantErr bool
 	}{
 		{
-			name: "code takes priority over codes",
-			body: `{"code":"` + u1 + `","codes":["` + u2 + `"]}`,
-			want: types.UUIDArray{mustUUID(u1)},
+			name: "code single",
+			body: `{"code":"` + u1 + `"}`,
+			want: []uuid.UUID{mustUUID(u1)},
 		},
 		{
-			name: "codes used when code missing",
+			name: "codes array",
 			body: `{"codes":["` + u1 + `","` + u2 + `"]}`,
-			want: types.UUIDArray{mustUUID(u1), mustUUID(u2)},
+			want: []uuid.UUID{mustUUID(u1), mustUUID(u2)},
 		},
 		{
-			name: "uuid used when others missing",
+			name: "id field",
+			body: `{"id":"` + u1 + `"}`,
+			want: []uuid.UUID{mustUUID(u1)},
+		},
+		{
+			name: "ids array",
+			body: `{"ids":["` + u1 + `","` + u2 + `"]}`,
+			want: []uuid.UUID{mustUUID(u1), mustUUID(u2)},
+		},
+		{
+			name: "uuid fallback",
 			body: `{"uuid":"` + u1 + `"}`,
-			want: types.UUIDArray{mustUUID(u1)},
+			want: []uuid.UUID{mustUUID(u1)},
 		},
 		{
-			name: "multiple fields uses first match",
-			body: `{"codes":["` + u1 + `"],"uuid":"` + u2 + `"}`,
-			want: types.UUIDArray{mustUUID(u1)},
+			name: "uuids fallback",
+			body: `{"uuids":["` + u1 + `"]}`,
+			want: []uuid.UUID{mustUUID(u1)},
 		},
+		{
+			name: "values lowest priority",
+			body: `{"values":["` + u1 + `","` + u2 + `"]}`,
+			want: []uuid.UUID{mustUUID(u1), mustUUID(u2)},
+		},
+
+		// PRIORITY TESTS (IMPORTANT)
+		{
+			name: "code beats all",
+			body: `{"uuid":"` + u1 + `","code":"` + u2 + `"}`,
+			want: []uuid.UUID{mustUUID(u2)},
+		},
+		{
+			name: "codes beats id",
+			body: `{"codes":["` + u1 + `"],"id":"` + u2 + `"}`,
+			want: []uuid.UUID{mustUUID(u1)},
+		},
+		{
+			name: "id beats uuid",
+			body: `{"uuid":"` + u1 + `","id":"` + u2 + `"}`,
+			want: []uuid.UUID{mustUUID(u2)},
+		},
+		{
+			name: "ids beats uuid",
+			body: `{"ids":["` + u1 + `"],"uuid":"` + u2 + `"}`,
+			want: []uuid.UUID{mustUUID(u1)},
+		},
+		{
+			name: "uuid beats values",
+			body: `{"values":["` + u1 + `"],"uuid":"` + u2 + `"}`,
+			want: []uuid.UUID{mustUUID(u2)},
+		},
+
 		{
 			name: "unique values",
 			body: `{"codes":["` + u1 + `","` + u1 + `","` + u2 + `"]}`,
-			want: types.UUIDArray{mustUUID(u1), mustUUID(u2)},
+			want: []uuid.UUID{mustUUID(u1), mustUUID(u2)},
 		},
 		{
 			name:    "invalid uuid",
@@ -95,23 +136,33 @@ func TestRequestStrings(t *testing.T) {
 	tests := []struct {
 		name    string
 		body    string
-		want    types.StrArray
+		want    []string
 		wantErr bool
 	}{
 		{
 			name: "code priority",
 			body: `{"code":["a"],"values":["b"]}`,
-			want: types.StrArray{"a"},
+			want: []string{"a"},
 		},
 		{
 			name: "values used",
 			body: `{"values":["a","b",""]}`,
-			want: types.StrArray{"a", "b"},
+			want: []string{"a", "b"},
+		},
+		{
+			name: "single string",
+			body: `{"value":"a"}`,
+			want: []string{"a"},
 		},
 		{
 			name: "multiple fields uses first match",
 			body: `{"strings":["x"],"values":["y"]}`,
-			want: types.StrArray{"y"},
+			want: []string{"y"},
+		},
+		{
+			name: "unique values",
+			body: `{"values":["a","a","b"]}`,
+			want: []string{"a", "b"},
 		},
 		{
 			name:    "invalid type",
