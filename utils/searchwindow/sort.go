@@ -2,8 +2,8 @@ package searchwindow
 
 import "slices"
 
-func SortTimeRanges(ranges []TimeRange) {
-	slices.SortFunc(ranges, func(a, b TimeRange) int {
+func SortTimeRanges[T TimeRange](ranges []T) {
+	slices.SortFunc(ranges, func(a, b T) int {
 		if a.StartTime().Before(b.StartTime()) {
 			return -1
 		}
