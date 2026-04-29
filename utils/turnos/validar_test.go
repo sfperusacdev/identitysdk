@@ -5,13 +5,16 @@ import (
 
 	"github.com/sfperusacdev/identitysdk/utils/turnos"
 	"github.com/stretchr/testify/require"
+	"github.com/user0608/goones/types"
 )
 
 func newTurno(codigo, inicio, fin string) turnos.Turno {
+	inicioJt, _ := types.NewJustTimeFromString(inicio)
+	finJt, _ := types.NewJustTimeFromString(fin)
 	return turnos.Turno{
 		Codigo: codigo,
-		Inicio: inicio,
-		Fin:    fin,
+		Inicio: inicioJt,
+		Fin:    finJt,
 	}
 }
 func TestValidarTurnos_TableDriven(t *testing.T) {

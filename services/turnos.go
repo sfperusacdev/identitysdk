@@ -8,6 +8,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/utils/turnos"
 	"github.com/sfperusacdev/identitysdk/xreq"
+	"github.com/user0608/goones/types"
 )
 
 func (s *ExternalBridgeService) Turnos(ctx context.Context) ([]turnos.Turno, error) {
@@ -21,11 +22,11 @@ func (s *ExternalBridgeService) Turnos(ctx context.Context) ([]turnos.Turno, err
 	var response struct {
 		Message string `json:"message"`
 		Data    []struct {
-			Codigo            string `json:"codigo"`
-			Descripcion       string `json:"descripcion"`
-			Inicio            string `json:"inicio"`
-			Fin               string `json:"fin"`
-			ReferenciaExterna string `json:"referecia_externa"`
+			Codigo            string         `json:"codigo"`
+			Descripcion       string         `json:"descripcion"`
+			Inicio            types.JustTime `json:"inicio"`
+			Fin               types.JustTime `json:"fin"`
+			ReferenciaExterna string         `json:"referecia_externa"`
 		} `json:"data"`
 	}
 

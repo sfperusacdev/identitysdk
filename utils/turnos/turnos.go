@@ -4,15 +4,24 @@ import (
 	"log/slog"
 	"sort"
 	"time"
+
+	"github.com/sfperusacdev/identitysdk/utils/ranges/workallocation"
+	"github.com/user0608/goones/types"
 )
 
 type Turno struct {
-	Codigo           string `json:"codigo"`
-	Descripcion      string `json:"descripcion"`
-	Inicio           string `json:"inicio"`
-	Fin              string `json:"fin"`
-	RefereciaExterna string `json:"referecia_externa"`
+	Codigo           string         `json:"codigo"`
+	Descripcion      string         `json:"descripcion"`
+	Inicio           types.JustTime `json:"inicio"`
+	Fin              types.JustTime `json:"fin"`
+	RefereciaExterna string         `json:"referecia_externa"`
 }
+
+var _ workallocation.Turno = (*Turno)(nil)
+
+func (t *Turno) TurnoID() string                { return t.Codigo }
+func (t *Turno) StartTurnoTime() types.JustTime { return t.Inicio }
+func (t *Turno) EndTurnoTime() types.JustTime   { return t.Fin }
 
 type turnoParsed struct {
 	Codigo    string
@@ -31,8 +40,8 @@ func preprocesarTurnos(turnos []Turno) []turnoParsed {
 	parsed := make([]turnoParsed, 0, len(turnos))
 
 	for _, t := range turnos {
-		hi, err1 := time.Parse(time.TimeOnly, t.Inicio)
-		hf, err2 := time.Parse(time.TimeOnly, t.Fin)
+		hi, err1 := time.Parse(time.TimeOnly, t.Inicio.String())
+		hf, err2 := time.Parse(time.TimeOnly, t.Fin.String())
 		if err1 != nil || err2 != nil {
 			continue
 		}
