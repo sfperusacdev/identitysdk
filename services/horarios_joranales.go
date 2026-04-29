@@ -32,10 +32,13 @@ type Rango struct {
 }
 
 var _ ranges.TimeRange = (*Rango)(nil)
+var _ ranges.TimeWindowsRange = (*Rango)(nil)
 
 func (r Rango) StartTime() time.Time { return r.Inicio }
+func (r Rango) EndTime() time.Time   { return r.Fin }
 
-func (r Rango) EndTime() time.Time { return r.Fin }
+func (r Rango) StartWindowsTime() time.Time { return r.InicioWindows }
+func (r Rango) EndWindowsTime() time.Time   { return r.FinWindows }
 
 type RangoDescanso struct {
 	Fecha  time.Time `json:"-"`
