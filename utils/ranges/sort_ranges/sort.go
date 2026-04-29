@@ -1,8 +1,12 @@
-package searchwindow
+package sortranges
 
-import "slices"
+import (
+	"slices"
 
-func SortTimeRanges[T TimeRange](ranges []T) {
+	"github.com/sfperusacdev/identitysdk/utils/ranges"
+)
+
+func SortTimeRanges[T ranges.TimeRange](ranges []T) {
 	slices.SortFunc(ranges, func(a, b T) int {
 		if a.StartTime().Before(b.StartTime()) {
 			return -1

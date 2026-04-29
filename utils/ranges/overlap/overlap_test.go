@@ -7,7 +7,7 @@
 // a range A overlaps B if A.start < B.end && B.start < A.end.
 //
 // Adjacent ranges where end == start are not considered overlapping.
-package workallocation
+package overlap
 
 import (
 	"testing"

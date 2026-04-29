@@ -36,12 +36,9 @@ package searchwindow
 import (
 	"errors"
 	"time"
-)
 
-type TimeRange interface {
-	StartTime() time.Time
-	EndTime() time.Time
-}
+	"github.com/sfperusacdev/identitysdk/utils/ranges"
+)
 
 type ToleranceConfig struct {
 	BeforePercent float64
@@ -55,7 +52,7 @@ type Tolerance struct {
 	AfterEnd    time.Duration
 }
 
-type SearchTolerance[T TimeRange] struct {
+type SearchTolerance[T ranges.TimeRange] struct {
 	Item      T
 	Tolerance Tolerance
 }
@@ -82,7 +79,7 @@ func (c ToleranceConfig) Validate() error {
 	return nil
 }
 
-func CalculateSearchTolerances[T TimeRange](
+func CalculateSearchTolerances[T ranges.TimeRange](
 	items []T,
 	config ToleranceConfig,
 ) ([]SearchTolerance[T], error) {

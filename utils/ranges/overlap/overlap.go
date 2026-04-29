@@ -1,11 +1,13 @@
-package workallocation
+package overlap
 
-type TimeRangeOverlap[T TimeRange] struct {
+import "github.com/sfperusacdev/identitysdk/utils/ranges"
+
+type TimeRangeOverlap[T ranges.TimeRange] struct {
 	Range       T
 	Overlapping bool
 }
 
-func MarkOverlappingRanges[T TimeRange](ranges []T) []TimeRangeOverlap[T] {
+func MarkOverlappingRanges[T ranges.TimeRange](ranges []T) []TimeRangeOverlap[T] {
 	result := make([]TimeRangeOverlap[T], len(ranges))
 
 	for i, r := range ranges {

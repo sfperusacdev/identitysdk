@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
-	"github.com/sfperusacdev/identitysdk/utils/searchwindow"
+	"github.com/sfperusacdev/identitysdk/utils/ranges"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/user0608/goones/types"
 )
@@ -31,7 +31,7 @@ type Rango struct {
 	FinWindows    time.Time `json:"fin_windows"`
 }
 
-var _ searchwindow.TimeRange = (*Rango)(nil)
+var _ ranges.TimeRange = (*Rango)(nil)
 
 func (r Rango) StartTime() time.Time { return r.Inicio }
 
@@ -43,7 +43,7 @@ type RangoDescanso struct {
 	Fin    time.Time `json:"fin"`
 }
 
-var _ searchwindow.TimeRange = (*RangoDescanso)(nil)
+var _ ranges.TimeRange = (*RangoDescanso)(nil)
 
 func (r RangoDescanso) StartTime() time.Time { return r.Inicio }
 

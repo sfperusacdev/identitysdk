@@ -49,13 +49,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/sfperusacdev/identitysdk/utils/ranges"
 	"github.com/user0608/goones/types"
 )
-
-type TimeRange interface {
-	StartTime() time.Time
-	EndTime() time.Time
-}
 
 type Turno interface {
 	TurnoID() string
@@ -68,11 +64,11 @@ type Config struct {
 	Extra25Limit time.Duration
 }
 
-type Service[W TimeRange, R TimeRange, T Turno] struct {
+type Service[W ranges.TimeRange, R ranges.TimeRange, T Turno] struct {
 	config Config
 }
 
-func NewService[W TimeRange, R TimeRange, T Turno](
+func NewService[W ranges.TimeRange, R ranges.TimeRange, T Turno](
 	config Config,
 ) Service[W, R, T] {
 	return Service[W, R, T]{
@@ -88,7 +84,7 @@ const (
 	Extra35 HourKind = "extra35"
 )
 
-type Allocation[W TimeRange, T Turno] struct {
+type Allocation[W ranges.TimeRange, T Turno] struct {
 	Item W
 
 	Horas    time.Duration
@@ -123,14 +119,14 @@ type DescansoSegment struct {
 	End   time.Time
 }
 
-type effectiveSegment[W TimeRange] struct {
+type effectiveSegment[W ranges.TimeRange] struct {
 	ItemIndex int
 	Item      W
 	Start     time.Time
 	End       time.Time
 }
 
-type classifiedSegment[W TimeRange] struct {
+type classifiedSegment[W ranges.TimeRange] struct {
 	ItemIndex int
 	Item      W
 	Start     time.Time
@@ -200,7 +196,7 @@ func (s Service[W, R, T]) Calculate(
 	return result
 }
 
-func subtractRests[W TimeRange, R TimeRange, T Turno](
+func subtractRests[W ranges.TimeRange, R ranges.TimeRange, T Turno](
 	workRanges []W,
 	restRanges []R,
 	result []Allocation[W, T],
@@ -234,7 +230,7 @@ func subtractRests[W TimeRange, R TimeRange, T Turno](
 	return effectiveSegments
 }
 
-func subtractRestFromSegments[W TimeRange, R TimeRange, T Turno](
+func subtractRestFromSegments[W ranges.TimeRange, R ranges.TimeRange, T Turno](
 	segments []effectiveSegment[W],
 	rest R,
 	allocation *Allocation[W, T],
@@ -285,7 +281,7 @@ func subtractRestFromSegments[W TimeRange, R TimeRange, T Turno](
 	return result
 }
 
-func addDescansoSegment[W TimeRange, T Turno](
+func addDescansoSegment[W ranges.TimeRange, T Turno](
 	allocation *Allocation[W, T],
 	segment DescansoSegment,
 ) {
@@ -298,7 +294,7 @@ func addDescansoSegment[W TimeRange, T Turno](
 	allocation.Descansos = append(allocation.Descansos, segment)
 }
 
-func classifyOvertime[W TimeRange](
+func classifyOvertime[W ranges.TimeRange](
 	segments []effectiveSegment[W],
 	config Config,
 ) []classifiedSegment[W] {
@@ -332,7 +328,7 @@ func classifyOvertime[W TimeRange](
 	return result
 }
 
-func classifySegmentPart[W TimeRange](
+func classifySegmentPart[W ranges.TimeRange](
 	segment effectiveSegment[W],
 	accStart time.Duration,
 	accEnd time.Duration,
@@ -401,7 +397,7 @@ func materializeTurnosForRange[T Turno](
 	return result
 }
 
-func addTurnoSegment[W TimeRange, T Turno](
+func addTurnoSegment[W ranges.TimeRange, T Turno](
 	allocation *Allocation[W, T],
 	turno T,
 	segment TurnoSegment,
