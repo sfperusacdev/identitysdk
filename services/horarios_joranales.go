@@ -41,7 +41,6 @@ func (r Rango) StartWindowsTime() time.Time { return r.InicioWindows }
 func (r Rango) EndWindowsTime() time.Time   { return r.FinWindows }
 
 type RangoDescanso struct {
-	Fecha  time.Time `json:"-"`
 	Inicio time.Time `json:"inicio"`
 	Fin    time.Time `json:"fin"`
 }
