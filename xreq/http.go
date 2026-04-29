@@ -1,6 +1,7 @@
 package xreq
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,12 +13,16 @@ import (
 	"github.com/user0608/goones/errs"
 )
 
+type XReqBody struct {
+	Error  error
+	Reader io.Reader
+}
 type RequestOptions struct {
 	Method       string
 	QueryParams  url.Values
 	Headers      http.Header
-	RequestBody  io.Reader
-	ResponseBody any // ResponseBody represents the full response body, used for all content types.
+	RequestBody  XReqBody
+	ResponseBody any // ResponseBody is decoded from a JSON response body.
 }
 
 type RequestOption func(*RequestOptions)
@@ -58,6 +63,23 @@ func WithQueryParams(params url.Values) RequestOption {
 	}
 }
 
+func WithJSONBody(payload any) RequestOption {
+	return func(ro *RequestOptions) {
+		body, err := json.Marshal(payload)
+		if err != nil {
+			ro.RequestBody = XReqBody{
+				Error: err,
+			}
+			return
+		}
+		ro.RequestBody = XReqBody{Reader: bytes.NewReader(body)}
+		if ro.Headers == nil {
+			ro.Headers = make(http.Header)
+		}
+		ro.Headers.Set("Content-Type", "application/json")
+	}
+}
+
 // WithUnmarshalResponseInto sets the full response body to be unmarshaled into the provided variable.
 // Use this option when you need to capture the entire response, regardless of its structure.
 func WithUnmarshalResponseInto(a any) RequestOption {
@@ -91,13 +113,22 @@ func WithAddHeader(key, value string) RequestOption {
 
 func WithHeaders(headers http.Header) RequestOption {
 	return func(o *RequestOptions) {
-		o.Headers = headers
+		if o.Headers == nil {
+			o.Headers = make(http.Header)
+		}
+
+		for key, values := range headers {
+			o.Headers.Del(key)
+			for _, value := range values {
+				o.Headers.Add(key, value)
+			}
+		}
 	}
 }
 
 func WithRequestBody(body io.Reader) RequestOption {
 	return func(o *RequestOptions) {
-		o.RequestBody = body
+		o.RequestBody = XReqBody{Reader: body}
 	}
 }
 
@@ -125,8 +156,15 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 		)
 		return errs.InternalError(err, "falló la construcción de la URL para %s%s", baseUrl, endpointPath)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, options.Method, endpoint, options.RequestBody)
+	if options.RequestBody.Error != nil {
+		return errs.InternalError(
+			options.RequestBody.Error,
+			"no se pudo preparar el body de la solicitud para %s %s",
+			options.Method,
+			endpoint,
+		)
+	}
+	req, err := http.NewRequestWithContext(ctx, options.Method, endpoint, options.RequestBody.Reader)
 	if err != nil {
 		slog.Error(
 			"error creating request",
@@ -153,22 +191,46 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 		return errs.InternalError(err, "falló la petición %s a %s", options.Method, endpoint)
 	}
 	defer res.Body.Close()
-	jsonDecoder := json.NewDecoder(res.Body)
-	if res.StatusCode != http.StatusOK {
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, readErr := io.ReadAll(res.Body)
+		if readErr != nil {
+			return errs.InternalError(readErr, "falló la lectura de la respuesta de error de %s", endpoint)
+		}
+
 		var apiResponse struct {
 			Message string `json:"message"`
 		}
-		if err := jsonDecoder.Decode(&apiResponse); err != nil {
-			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", endpointPath)
-			return err
+
+		message := string(body)
+		if err := json.Unmarshal(body, &apiResponse); err == nil && apiResponse.Message != "" {
+			message = apiResponse.Message
 		}
-		slog.Error("service response error", "message", apiResponse.Message)
-		return errs.InternalErrorDirect(apiResponse.Message)
+
+		slog.Error(
+			"service response error",
+			"status", res.StatusCode,
+			"message", message,
+			"endpoint", endpoint,
+			"method", options.Method,
+		)
+
+		return errs.InternalErrorDirect(message)
 	}
+
 	if options.ResponseBody != nil {
+		jsonDecoder := json.NewDecoder(res.Body)
 		if err := jsonDecoder.Decode(options.ResponseBody); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", endpointPath)
-			return errs.InternalError(err, "falló la decodificación de la respuesta JSON de %s%s", baseUrl, endpointPath)
+			return errs.InternalError(
+				err,
+				"falló la decodificación de la respuesta JSON de %s%s",
+				baseUrl,
+				endpointPath,
+			)
 		}
 	}
 	return nil
