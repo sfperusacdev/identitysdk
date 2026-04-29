@@ -951,3 +951,59 @@ func TestServiceCalculate_MultipleWorkRangesAndRestAcrossTurnoBoundary(t *testin
 	require.Equal(t, 90*time.Minute, bNocturno.Extra25)
 	require.Equal(t, 3*time.Hour, bNocturno.Extra35)
 }
+
+func TestServiceCalculate_TurnoAllocationTracksStartAndEndFromSingleSegment(t *testing.T) {
+	workRanges := []testRange{
+		{id: "A", start: dt(24, 8, 0), end: dt(24, 11, 0)},
+	}
+
+	svc := NewService[testRange, testRange, testTurno](defaultConfig())
+
+	got := svc.Calculate(workRanges, nil, defaultTurnos())
+
+	require.Len(t, got, 1)
+
+	dia := findTurnoAllocation(t, got[0], "dia")
+
+	require.Equal(t, dt(24, 8, 0), dia.Start)
+	require.Equal(t, dt(24, 11, 0), dia.End)
+}
+
+func TestServiceCalculate_TurnoAllocationTracksStartAndEndFromMultipleSegments(t *testing.T) {
+	workRanges := []testRange{
+		{id: "A", start: dt(24, 8, 0), end: dt(24, 19, 0)},
+	}
+
+	restRanges := []testRange{
+		{id: "REST", start: dt(24, 16, 30), end: dt(24, 17, 30)},
+	}
+
+	svc := NewService[testRange, testRange, testTurno](defaultConfig())
+
+	got := svc.Calculate(workRanges, restRanges, defaultTurnos())
+
+	require.Len(t, got, 1)
+
+	tarde := findTurnoAllocation(t, got[0], "tarde")
+
+	require.Len(t, tarde.Segments, 3)
+	require.Equal(t, dt(24, 14, 0), tarde.Start)
+	require.Equal(t, dt(24, 19, 0), tarde.End)
+}
+
+func TestServiceCalculate_TurnoAllocationTracksStartAndEndAcrossMidnight(t *testing.T) {
+	workRanges := []testRange{
+		{id: "A", start: dt(24, 21, 0), end: dt(25, 2, 0)},
+	}
+
+	svc := NewService[testRange, testRange, testTurno](defaultConfig())
+
+	got := svc.Calculate(workRanges, nil, defaultTurnos())
+
+	require.Len(t, got, 1)
+
+	noche := findTurnoAllocation(t, got[0], "noche")
+
+	require.Equal(t, dt(24, 22, 0), noche.Start)
+	require.Equal(t, dt(25, 2, 0), noche.End)
+}

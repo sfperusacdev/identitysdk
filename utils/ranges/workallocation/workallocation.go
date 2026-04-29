@@ -101,6 +101,9 @@ type TurnoAllocation[T Turno] struct {
 	TurnoID string
 	Turno   T
 
+	Start time.Time
+	End   time.Time
+
 	Horas   time.Duration
 	Extra25 time.Duration
 	Extra35 time.Duration
@@ -409,16 +412,32 @@ func addTurnoSegment[W ranges.TimeRange, T Turno](
 
 	for i := range allocation.Turnos {
 		if allocation.Turnos[i].TurnoID == turno.TurnoID() {
-			addDurationByKind(&allocation.Turnos[i], segment.Kind, duration)
-			allocation.Turnos[i].Segments = append(allocation.Turnos[i].Segments, segment)
+
+			ta := &allocation.Turnos[i]
+
+			addDurationByKind(ta, segment.Kind, duration)
+			ta.Segments = append(ta.Segments, segment)
+
+			// 👉 actualizar rango
+			if ta.Start.IsZero() || segment.Start.Before(ta.Start) {
+				ta.Start = segment.Start
+			}
+			if ta.End.IsZero() || segment.End.After(ta.End) {
+				ta.End = segment.End
+			}
+
 			return
 		}
 	}
 
 	turnoAllocation := TurnoAllocation[T]{
-		TurnoID:  turno.TurnoID(),
-		Turno:    turno,
-		Segments: []TurnoSegment{segment},
+		TurnoID: turno.TurnoID(),
+		Turno:   turno,
+		Start:   segment.Start,
+		End:     segment.End,
+		Segments: []TurnoSegment{
+			segment,
+		},
 	}
 
 	addDurationByKind(&turnoAllocation, segment.Kind, duration)
