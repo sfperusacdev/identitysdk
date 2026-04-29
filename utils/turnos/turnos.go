@@ -19,9 +19,9 @@ type Turno struct {
 
 var _ workallocation.Turno = (*Turno)(nil)
 
-func (t *Turno) TurnoID() string                { return t.Codigo }
-func (t *Turno) StartTurnoTime() types.JustTime { return t.Inicio }
-func (t *Turno) EndTurnoTime() types.JustTime   { return t.Fin }
+func (t Turno) TurnoID() string                { return t.Codigo }
+func (t Turno) StartTurnoTime() types.JustTime { return t.Inicio }
+func (t Turno) EndTurnoTime() types.JustTime   { return t.Fin }
 
 type turnoParsed struct {
 	Codigo    string
