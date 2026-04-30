@@ -27,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
-	github.com/user0608/goones v0.13.0
+	github.com/user0608/goones v0.14.0
 	github.com/user0608/ifdevmode v0.0.3
 	github.com/user0608/numeroaletras v0.1.1
 	go.uber.org/fx v1.23.0

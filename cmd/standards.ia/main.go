@@ -16,7 +16,7 @@ import (
 var embeddedStandards embed.FS
 
 func main() {
-	outputPath := flag.String("out", ".estandares", "output directory")
+	outputPath := flag.String("out", ".ai", "output directory")
 	flag.Parse()
 
 	if err := recreateDir(*outputPath); err != nil {
