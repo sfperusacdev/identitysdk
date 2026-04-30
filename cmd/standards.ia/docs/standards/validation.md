@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Estandarizar la validación de structs usando tags `chk`.
+Estandarizar la validación estructural de structs usando tags `chk`.
 
 La librería estándar para validación es:
 
@@ -19,52 +19,27 @@ El uso de `kcheck` no es obligatorio en todos los endpoints.
 Debe utilizarse cuando sea necesario validar:
 
 - campos requeridos
-- formato (email, uuid, url, etc.)
-- longitud o rangos
+- formato
+- longitud
+- rangos
 - reglas simples de estructura
-
----
-
-## Cuándo usar kcheck
-
-Usar `kcheck` cuando:
-
-- el payload tiene validaciones declarativas claras
-- se requiere consistencia en validación
-- se desea evitar validación manual repetitiva
-
-Ejemplo:
-
-```go
-if err := kcheck.Valid(payload); err != nil {
-	return answer.Err(c, errs.BadRequestDirect(err.Error()))
-}
-```
-
----
-
-## Cuándo NO usar kcheck
-
-No es necesario usar `kcheck` cuando:
-
-- el payload es simple y no requiere validación
-- la validación depende de lógica de negocio
-- la validación requiere acceso a DB o servicios externos
-
-En esos casos, validar en el usecase.
 
 ---
 
 ## Regla de decisión
 
 ```text
-validación estructural → handler (kcheck opcional)
-validación de negocio → usecase
+validación estructural → handler
+validación de negocio  → usecase
 ```
 
-## Uso en handlers
+---
 
-Todo payload recibido por HTTP debe validarse después de parsearse con `binds`.
+## Handler
+
+El handler es responsable de la validación estructural del request.
+
+Ejemplo:
 
 ```go
 var payload models.PersonaModel
@@ -76,6 +51,66 @@ if err := kcheck.Valid(payload); err != nil {
 	return answer.Err(c, errs.BadRequestDirect(err.Error()))
 }
 ```
+
+---
+
+## Usecase
+
+El usecase NO debe validar campos básicos del payload.
+
+No validar en usecase:
+
+- campos requeridos
+- strings vacíos
+- formatos
+- tipos
+- longitudes
+- rangos simples
+
+Incorrecto:
+
+```go
+if producto.Codigo == "" {
+	return errs.BadRequestDirect("codigo requerido")
+}
+```
+
+```go
+if producto.Nombre == "" {
+	return errs.BadRequestDirect("nombre requerido")
+}
+```
+
+El usecase solo debe validar reglas de negocio.
+
+Ejemplos:
+
+- existencia en base de datos
+- permisos
+- estados permitidos
+- reglas cruzadas entre entidades
+- validaciones contra servicios externos
+
+---
+
+## Cuándo usar kcheck
+
+Usar `kcheck` cuando:
+
+- el payload tiene validaciones declarativas claras
+- se requiere consistencia en validación
+- se desea evitar validación manual repetitiva
+
+---
+
+## Cuándo NO usar kcheck
+
+No es necesario usar `kcheck` cuando:
+
+- el payload no requiere validación
+- el endpoint no recibe body/query estructurado
+- la validación depende de lógica de negocio
+- la validación requiere DB o servicios externos
 
 ---
 
@@ -288,7 +323,8 @@ err := v.Struct(DTO{Code: "abc"})
 
 ## Reglas obligatorias
 
-- Validar payloads HTTP en el handler.
+- Usar `kcheck` solo cuando aporte valor.
+- Validar payloads estructurales en el handler.
 - Validar después de `binds.JSON` o `binds.Query`.
 - Responder errores de validación con:
 
@@ -296,42 +332,23 @@ err := v.Struct(DTO{Code: "abc"})
 return answer.Err(c, errs.BadRequestDirect(err.Error()))
 ```
 
-- Usar tags `chk` en `models` o `dtos`.
-- No validar manualmente en handler si existe un tag `chk`.
+- Usar tags `chk` en `models` o `dtos` cuando aplique.
+- No duplicar validaciones manuales si existe un tag `chk`.
 - No usar validadores externos si `kcheck` cubre el caso.
+- No validar campos básicos dentro del usecase.
 - Usar `dtos` solo cuando el modelo no represente bien la entrada o salida.
 
 ---
 
-## Usecase vs Handler
-
-### Handler
-
-Valida estructura del request:
-
-```text
-campos requeridos
-formato
-longitud
-tipo
-rango básico
-```
-
-### Usecase
-
-Valida reglas de negocio:
-
-```text
-existencia en DB
-permisos
-estado permitido
-reglas cruzadas
-integraciones externas
-```
-
----
-
 ## Anti-patterns
+
+No validar campos básicos en usecase:
+
+```go
+if producto.Nombre == "" {
+	return errs.BadRequestDirect("nombre requerido")
+}
+```
 
 No validar manualmente si existe tag:
 
@@ -341,7 +358,7 @@ if payload.Email == "" {
 }
 ```
 
-No omitir validación:
+No omitir validación cuando el payload la requiere:
 
 ```go
 if err := uc.CrearPersona(ctx, payload); err != nil {
@@ -355,7 +372,7 @@ No responder con `c.JSON`:
 return c.JSON(400, err.Error())
 ```
 
-No validar HTTP dentro del usecase:
+No pasar HTTP al usecase:
 
 ```go
 func (uc *Usecase) CrearPersona(c echo.Context, payload models.PersonaModel) error
@@ -365,10 +382,11 @@ func (uc *Usecase) CrearPersona(c echo.Context, payload models.PersonaModel) err
 
 ## Checklist
 
-- [ ] El payload tiene tags `chk`.
-- [ ] El handler llama `kcheck.Valid`.
+- [ ] Se usa `kcheck` solo cuando aplica.
+- [ ] La validación estructural ocurre en handler.
+- [ ] El usecase no valida campos básicos.
+- [ ] El usecase solo valida reglas de negocio.
 - [ ] La validación ocurre después de `binds`.
 - [ ] El error se responde con `answer.Err`.
 - [ ] El error se convierte con `errs.BadRequestDirect`.
 - [ ] No hay validación manual duplicada.
-- [ ] Las reglas de negocio siguen en usecase.

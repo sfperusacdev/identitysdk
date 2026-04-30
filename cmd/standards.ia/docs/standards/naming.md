@@ -137,22 +137,60 @@ ReporteVentasDTO
 
 ---
 
-## Archivos
+## Naming de archivos
 
-### Usecases simples
+Los archivos NO deben usar sufijos redundantes como:
+
+- _model
+- _repository
+- _service
+- _handler
+
+El nombre del archivo debe ser simple y representar el dominio o acción.
+
+---
+
+### Ejemplos correctos
 
 ```text
 personas.go
+persona.go
 productos.go
+almacenes.go
 ```
 
-### Usecases complejos
+Casos específicos:
 
 ```text
 crear_persona.go
 listar_personas.go
 actualizar_persona.go
 eliminar_personas.go
+```
+
+---
+
+### Ejemplos incorrectos
+
+```text
+persona_model.go
+persona_repository.go
+persona_service.go
+persona_handler.go
+```
+
+---
+
+## Relación archivo → contenido
+
+```text
+archivo                      contenido
+---------------------------------------------
+personas.go                 PersonasUsecase
+persona.go                  PersonaModel
+repos/persona.go            PersonaRepository
+servs/sunat.go              ValidadorSunatService
+handlers/persona.go         handlers HTTP
 ```
 
 ---
@@ -222,7 +260,7 @@ type Interface interface {}
 
 ## Naming en métodos
 
-Métodos deben ser específicos y descriptivos:
+Métodos deben ser específicos y descriptivos.
 
 Correcto:
 
@@ -282,15 +320,23 @@ Util
 Common
 ```
 
+No duplicar contexto en nombres de archivos:
+
+```text
+persona_repository.go
+persona_model.go
+```
+
 ---
 
 ## Checklist
 
-- [ ] Se usa español como idioma principal.
-- [ ] Los nombres son descriptivos.
-- [ ] No hay abreviaciones innecesarias.
-- [ ] No hay mezcla de idiomas.
-- [ ] Los métodos son específicos.
-- [ ] Las interfaces tienen nombres claros.
-- [ ] Los archivos siguen la convención.
-- [ ] Las variables son claras y consistentes.
+- [ ] Se usa español como idioma principal
+- [ ] Los nombres son descriptivos
+- [ ] No hay abreviaciones innecesarias
+- [ ] No hay mezcla de idiomas
+- [ ] Los métodos son específicos
+- [ ] Las interfaces tienen nombres claros
+- [ ] Los archivos NO usan sufijos redundantes
+- [ ] Los nombres de archivos son simples y claros
+- [ ] Las variables son consistentes

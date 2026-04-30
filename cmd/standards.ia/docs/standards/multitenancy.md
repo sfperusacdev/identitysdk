@@ -233,22 +233,6 @@ prefix := identitysdk.EmpresaPrefix(ctx) + "%"
 
 ---
 
-## `identitysdk.RemovePrefix`
-
-Usar cuando se necesite devolver datos sin el prefijo interno.
-
-```go
-codigo := identitysdk.RemovePrefix("sfperu.23932")
-```
-
-Resultado:
-
-```text
-23932
-```
-
----
-
 ## Crear registros
 
 ```go
