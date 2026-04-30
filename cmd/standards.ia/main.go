@@ -5,6 +5,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -37,6 +38,7 @@ func recreateDir(path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return err
 	}
+
 	return os.MkdirAll(path, 0755)
 }
 
@@ -68,7 +70,6 @@ func extractDir(source fs.FS, sourceDir, targetDir string) error {
 
 func ensureGitignoreEntry(repoRoot, targetPath string) error {
 	gitignorePath := filepath.Join(repoRoot, ".gitignore")
-
 	entry := normalizeGitignoreEntry(targetPath)
 
 	exists, err := fileExists(gitignorePath)
@@ -89,34 +90,47 @@ func ensureGitignoreEntry(repoRoot, targetPath string) error {
 		return nil
 	}
 
-	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, 0644)
+	needsNewline, err := fileNeedsTrailingNewline(gitignorePath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	_, err = f.WriteString(entry + "\n")
+	file, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if needsNewline {
+		if _, err := file.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+
+	_, err = file.WriteString(entry + "\n")
 	return err
 }
 
-func normalizeGitignoreEntry(p string) string {
-	p = filepath.ToSlash(p)
-	p = strings.TrimPrefix(p, "./")
-	p = strings.TrimPrefix(p, "/")
-	if !strings.HasSuffix(p, "/") {
-		p += "/"
+func normalizeGitignoreEntry(path string) string {
+	path = filepath.ToSlash(path)
+	path = strings.TrimPrefix(path, "./")
+	path = strings.TrimPrefix(path, "/")
+
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
 	}
-	return p
+
+	return path
 }
 
 func gitignoreContains(path, entry string) (bool, error) {
-	f, err := os.Open(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == entry {
@@ -127,14 +141,36 @@ func gitignoreContains(path, entry string) (bool, error) {
 	return false, scanner.Err()
 }
 
+func fileNeedsTrailingNewline(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	_, err = file.Seek(-1, io.SeekEnd)
+	if err != nil {
+		return false, nil
+	}
+
+	lastByte := make([]byte, 1)
+	if _, err := file.Read(lastByte); err != nil {
+		return false, err
+	}
+
+	return lastByte[0] != '\n', nil
+}
+
 func fileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
 	}
+
 	if os.IsNotExist(err) {
 		return false, nil
 	}
+
 	return false, err
 }
 
