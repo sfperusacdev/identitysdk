@@ -1,4 +1,4 @@
-package formfile
+package binds
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/user0608/goones/errs"
 )
 
-func ReadOptionalFormFile(c echo.Context, fieldName string) ([]byte, error) {
+func FormFileBytesOptional(c echo.Context, fieldName string) ([]byte, error) {
 	fileHeader, err := c.FormFile(fieldName)
 	if err != nil {
 		if errors.Is(err, http.ErrMissingFile) {
@@ -19,19 +19,19 @@ func ReadOptionalFormFile(c echo.Context, fieldName string) ([]byte, error) {
 		return nil, errs.InternalErrorDirect("error al obtener el archivo opcional del formulario")
 	}
 
-	return readFormFileBytes(fileHeader)
+	return formFileBytes(fileHeader)
 }
 
-func ReadRequiredFormFile(c echo.Context, fieldName string) ([]byte, error) {
+func FormFileBytesRequired(c echo.Context, fieldName string) ([]byte, error) {
 	fileHeader, err := c.FormFile(fieldName)
 	if err != nil {
 		return nil, errs.BadRequestf("el archivo requerido '%s' no fue enviado o es inválido", fieldName)
 	}
 
-	return readFormFileBytes(fileHeader)
+	return formFileBytes(fileHeader)
 }
 
-func readFormFileBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
+func formFileBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return nil, errs.InternalErrorDirect("error al abrir el archivo del formulario")

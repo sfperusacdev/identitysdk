@@ -1,4 +1,4 @@
-package formfile_test
+package binds
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/sfperusacdev/identitysdk/binds/formfile"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func TestReadOptionalFormFile(t *testing.T) {
 	t.Run("file present", func(t *testing.T) {
 		c := newMultipartContext(t, "file", []byte("hello"))
 
-		data, err := formfile.ReadOptionalFormFile(c, "file")
+		data, err := FormFileBytesOptional(c, "file")
 
 		require.NoError(t, err)
 		assert.Equal(t, []byte("hello"), data)
@@ -47,7 +47,7 @@ func TestReadOptionalFormFile(t *testing.T) {
 	t.Run("file missing", func(t *testing.T) {
 		c := newMultipartContext(t, "", nil)
 
-		data, err := formfile.ReadOptionalFormFile(c, "file")
+		data, err := FormFileBytesOptional(c, "file")
 
 		require.NoError(t, err)
 		assert.Nil(t, data)
@@ -58,7 +58,7 @@ func TestReadRequiredFormFile(t *testing.T) {
 	t.Run("file present", func(t *testing.T) {
 		c := newMultipartContext(t, "file", []byte("hello"))
 
-		data, err := formfile.ReadRequiredFormFile(c, "file")
+		data, err := FormFileBytesRequired(c, "file")
 
 		require.NoError(t, err)
 		assert.Equal(t, []byte("hello"), data)
@@ -67,7 +67,7 @@ func TestReadRequiredFormFile(t *testing.T) {
 	t.Run("file missing", func(t *testing.T) {
 		c := newMultipartContext(t, "", nil)
 
-		data, err := formfile.ReadRequiredFormFile(c, "file")
+		data, err := FormFileBytesRequired(c, "file")
 
 		assert.Error(t, err)
 		assert.Nil(t, data)
