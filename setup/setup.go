@@ -144,6 +144,10 @@ func NewService(
 		apply(options)
 	}
 
+	if options.details.Name != "" {
+		xreq.SetDefaultXOrigin(fmt.Sprintf("internal:%s", options.details.Name))
+	}
+
 	service := &Service{
 		version: version,
 		options: *options,

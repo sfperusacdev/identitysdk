@@ -92,6 +92,10 @@ func WithJsonContentType() RequestOption {
 	return WithHeader("Content-Type", "application/json")
 }
 
+func WithXOrigin(value string) RequestOption {
+	return WithHeader("X-Origin", value)
+}
+
 func WithHeader(key, value string) RequestOption {
 	return func(o *RequestOptions) {
 		if o.Headers == nil {
@@ -131,6 +135,10 @@ func WithRequestBody(body io.Reader) RequestOption {
 		o.RequestBody = XReqBody{Reader: body}
 	}
 }
+
+var defaultXOrigin string
+
+func SetDefaultXOrigin(xorigin string) { defaultXOrigin = xorigin }
 
 func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...RequestOption) error {
 	if baseUrl == "" {
@@ -177,6 +185,14 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 	if options.QueryParams != nil {
 		req.URL.RawQuery = options.QueryParams.Encode()
 	}
+
+	if defaultXOrigin != "" {
+		if options.Headers == nil {
+			options.Headers = make(http.Header)
+		}
+		options.Headers.Set("X-Origin", defaultXOrigin)
+	}
+
 	if options.Headers != nil {
 		for key, values := range options.Headers {
 			req.Header.Del(key)
@@ -185,6 +201,7 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			}
 		}
 	}
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		slog.Error("error on request", "error", err, "endpoint", endpoint, "method", options.Method)
