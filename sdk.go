@@ -382,18 +382,22 @@ func Token(c context.Context) string {
 }
 
 func CloneContext(ctx context.Context) context.Context {
-	values, ok := JwtClaims(ctx)
-	if !ok {
-		return context.Background()
+	newCtx := context.Background()
+
+	if values, ok := JwtClaims(ctx); ok {
+		newCtx = context.WithValue(newCtx, jwt_claims_key, values)
 	}
-	var newCtx = context.WithValue(context.Background(), jwt_claims_key, values)
+
 	newCtx = context.WithValue(newCtx, domain_key, Empresa(ctx))
 	newCtx = context.WithValue(newCtx, jwt_claims_username, Username(ctx))
 	newCtx = context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
 	newCtx = context.WithValue(newCtx, jwt_token_key, Token(ctx))
+	newCtx = context.WithValue(newCtx, request_origin_key, RequestOrigin(ctx))
+
 	if session, ok := ReadSession(ctx); ok {
 		newCtx = context.WithValue(newCtx, jwt_session_key, session)
 	}
+
 	return newCtx
 }
 
