@@ -1,6 +1,7 @@
 package signpdf
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -14,7 +15,9 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/rs/xid"
+	"github.com/sfperusacdev/identitysdk"
 	pyhankoconfig "github.com/sfperusacdev/identitysdk/helpers/signpdf/pyhanko_config"
+	"github.com/user0608/ifdevmode"
 )
 
 type PyhankoPDFSigner struct {
@@ -25,12 +28,14 @@ type PyhankoPDFSigner struct {
 var _ PDFSigner = (*PyhankoPDFSigner)(nil)
 
 func NewPyhankoPDFSigner(inspector PDFInspector) *PyhankoPDFSigner {
+	return NewPyhankoPDFSignerWithPyhankoPath(inspector, "pyhanko")
+}
+func NewPyhankoPDFSignerWithPyhankoPath(inspector PDFInspector, pyhankoBin string) *PyhankoPDFSigner {
 	return &PyhankoPDFSigner{
-		pyhankoBin: "pyhanko",
+		pyhankoBin: pyhankoBin,
 		inspector:  inspector,
 	}
 }
-
 func (py *PyhankoPDFSigner) prepareConfigFile(box *SignBox, text string) (string, func() error, error) {
 	var configData []byte
 	var err error
@@ -201,7 +206,7 @@ func (py *PyhankoPDFSigner) Sign(
 	py.ensureBoxDefaults(box)
 
 	keyPath, certPath, cleanUpKeys, err := py.storeKeyAndCertFiles([]byte(keyPEM), []byte(certPEM))
-	if cleanUpKeys != nil {
+	if cleanUpKeys != nil && !ifdevmode.Yes() {
 		defer cleanUpKeys()
 	}
 	if err != nil {
@@ -209,7 +214,7 @@ func (py *PyhankoPDFSigner) Sign(
 	}
 
 	configPath, configCleanup, err := py.prepareConfigFile(box, py.extractCommonName(certPEM))
-	if configCleanup != nil {
+	if configCleanup != nil && !ifdevmode.Yes() {
 		defer configCleanup()
 	}
 	if err != nil {
@@ -217,7 +222,7 @@ func (py *PyhankoPDFSigner) Sign(
 	}
 
 	inputPDFPath, inputCleanup, err := py.storeTempFile(pdfData)
-	if inputCleanup != nil {
+	if inputCleanup != nil && !ifdevmode.Yes() {
 		defer inputCleanup()
 	}
 	if err != nil {
@@ -233,13 +238,15 @@ func (py *PyhankoPDFSigner) Sign(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get page dimensions: %w", err)
 		}
+
 		fieldValue = py.buildSignField(safeSignName, *box, widthPt, heightPt)
 	}
 
 	outputPath := py.outputPath(id)
-	cmd := exec.CommandContext(
-		ctx,
-		py.pyhankoBin, "--config", configPath,
+
+	args := []string{
+		"--verbose",
+		"--config", configPath,
 		"sign", "addsig",
 		"--field", fieldValue,
 		"pemder",
@@ -248,18 +255,39 @@ func (py *PyhankoPDFSigner) Sign(
 		inputPDFPath,
 		outputPath,
 		"--no-pass",
-	)
-	cmd.Env = []string{"TZ=America/Lima"}
+	}
 
-	if err := cmd.Run(); err != nil {
-		slog.Error("pyHanko command failed", "command", cmd.String(), "error", err)
-		return nil, fmt.Errorf("failed to sign PDF with pyHanko")
+	stdout, stderr, exitCode, err := py.runPyhanko(ctx, args...)
+	if err != nil {
+		details := strings.TrimSpace(stderr)
+		if details == "" {
+			details = strings.TrimSpace(stdout)
+		}
+		if details == "" {
+			details = err.Error()
+		}
+
+		slog.Error(
+			"pyHanko command failed",
+			"bin", py.pyhankoBin,
+			"args", args,
+			"exit_code", exitCode,
+			"error", err,
+			"stdout", stdout,
+			"stderr", stderr,
+		)
+
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("pyHanko signing cancelled or timed out: %w: %s", ctxErr, details)
+		}
+
+		return nil, fmt.Errorf("failed to sign PDF with pyHanko: exit_code=%d: %s", exitCode, details)
 	}
 
 	signedPDF, err := os.ReadFile(outputPath)
 	if err != nil {
 		slog.Error("failed to read signed PDF", "path", outputPath, "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to read signed PDF: %w", err)
 	}
 
 	if err := os.Remove(outputPath); err != nil {
@@ -270,6 +298,48 @@ func (py *PyhankoPDFSigner) Sign(
 		ID:                id,
 		SingnedPDFContent: signedPDF,
 	}, nil
+}
+
+func (py *PyhankoPDFSigner) runPyhanko(
+	ctx context.Context,
+	args ...string,
+) (stdout string, stderr string, exitCode int, err error) {
+	cmd := exec.CommandContext(ctx, py.pyhankoBin, args...)
+
+	var tzStr = "TZ=America/Lima"
+	loc, _ := identitysdk.Tz(ctx)
+	if loc != nil {
+		tzStr = fmt.Sprintf("TZ=%s", loc.String())
+	}
+	cmd.Env = append(os.Environ(), tzStr)
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err = cmd.Run()
+
+	stdout = stdoutBuf.String()
+	stderr = stderrBuf.String()
+
+	if err == nil {
+		return stdout, stderr, 0, nil
+	}
+
+	exitCode = -1
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		exitCode = exitErr.ExitCode()
+	}
+
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return stdout, stderr, exitCode, ctxErr
+	}
+
+	return stdout, stderr, exitCode, err
 }
 
 func (py *PyhankoPDFSigner) SignFromFile(ctx context.Context, signName string, pdfPath, certPEM, keyPEM string, box *SignBox) (*SignedPDFResult, error) {

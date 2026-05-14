@@ -168,8 +168,8 @@ github.com/tklauser/numcpus v0.11.0 h1:nSTwhKH5e1dMNsCdVBukSZrURJRoHbSEQjdEbY+9R
 github.com/tklauser/numcpus v0.11.0/go.mod h1:z+LwcLq54uWZTX0u/bGobaV34u6V7KNlTZejzM6/3MQ=
 github.com/user0608/goones v0.14.0 h1:m8gT8SHXDEUlw5+lcVFwUKZWD6ISDf93PBrFslvOdFo=
 github.com/user0608/goones v0.14.0/go.mod h1:rF2/M+NiC72g6+z+qOXsq82OXdo3z1gGS+gsUj+gu0o=
-github.com/user0608/ifdevmode v0.0.3 h1:C3QI33wNvfEug75RvJUTqacLhEayc2Jf5+LpGa69ozE=
-github.com/user0608/ifdevmode v0.0.3/go.mod h1:xKp8oalo4pacK5f9X00W2hnmJ9vQcGXj0tIXce+rUqY=
+github.com/user0608/ifdevmode v0.0.4 h1:Exk+yE1sw3qN8GeJ8OhApMO5UUxxHhiUvAIsvWgzda0=
+github.com/user0608/ifdevmode v0.0.4/go.mod h1:xKp8oalo4pacK5f9X00W2hnmJ9vQcGXj0tIXce+rUqY=
 github.com/user0608/numeroaletras v0.1.1 h1:oKM1yi09I1znkOzh4Bd3Rc78ypNBjHCawosy1lAbA0U=
 github.com/user0608/numeroaletras v0.1.1/go.mod h1:loTxF0N/u1t2rNTTxdUPj2ujp9AZ6zVz7zT+dxCMbIU=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
