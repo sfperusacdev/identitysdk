@@ -9,6 +9,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/utils/ranges"
 	"github.com/sfperusacdev/identitysdk/xreq"
+	"github.com/shopspring/decimal"
 	"github.com/user0608/goones/types"
 )
 
@@ -18,9 +19,10 @@ type ResultTrabajadoresHorarios struct {
 }
 
 type Dia struct {
-	Fecha     time.Time       `json:"fecha"`
-	Horarios  []Rango         `json:"horarios"`
-	Descansos []RangoDescanso `json:"descansos"`
+	Fecha             time.Time       `json:"fecha"`
+	HorasRegularesDia decimal.Decimal `json:"horas_regulares_dia"`
+	Horarios          []Rango         `json:"horarios"`
+	Descansos         []RangoDescanso `json:"descansos"`
 }
 
 type Rango struct {
