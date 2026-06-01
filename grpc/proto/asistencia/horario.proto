@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package asistencia.v1;
+
+option go_package = "github.com/sfperusacdev/identitysdk/grpc/gen/asistencia;asistenciapb";
+
+import "google/protobuf/timestamp.proto";
+
+service TrabajadoresHorariosService {
+  rpc ListarTrabajadoresHorarios(ListarTrabajadoresHorariosRequest)
+      returns (ListarTrabajadoresHorariosResponse);
+}
+
+message ListarTrabajadoresHorariosRequest {
+  string fecha_inicio = 1;
+  string fecha_fin = 2;
+  repeated string trabajadores_codigos = 3;
+}
+
+message ListarTrabajadoresHorariosResponse {
+  repeated ResultTrabajadoresHorarios data = 1;
+}
+
+message ResultTrabajadoresHorarios {
+  string trabajador_codigo = 1;
+  repeated Dia fechas = 2;
+}
+
+message Dia {
+  google.protobuf.Timestamp fecha = 1;
+  string horas_regulares_dia = 2;
+  repeated Rango horarios = 3;
+  repeated RangoDescanso descansos = 4;
+}
+
+message Rango {
+  google.protobuf.Timestamp inicio = 1;
+  google.protobuf.Timestamp fin = 2;
+  google.protobuf.Timestamp inicio_windows = 3;
+  google.protobuf.Timestamp fin_windows = 4;
+}
+
+message RangoDescanso {
+  google.protobuf.Timestamp inicio = 1;
+  google.protobuf.Timestamp fin = 2;
+}

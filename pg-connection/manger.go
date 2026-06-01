@@ -82,6 +82,9 @@ func (c *connection) Conn(ctx context.Context) *gorm.DB {
 }
 
 func (c *connection) WithTx(ctx context.Context, txFunc func(ctx context.Context) error) error {
+	if txFunc == nil {
+		return nil
+	}
 	if _, ok := ctx.Value(contextConnectionKey).(*gorm.DB); ok {
 		return txFunc(ctx)
 	}
