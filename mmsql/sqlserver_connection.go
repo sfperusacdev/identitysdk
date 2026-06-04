@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-type SQLServerConfigParams struct {
+type SQLServerConfig struct {
 	DBHost     string
 	DBPort     string
 	DBInstance string
@@ -29,7 +29,7 @@ type SQLServerConnection struct {
 
 var _ connection.StorageManager = (*SQLServerConnection)(nil)
 
-func NewConnection(config SQLServerConfigParams) (*SQLServerConnection, error) {
+func NewSQLServerConnection(config SQLServerConfig) (*SQLServerConnection, error) {
 	conn := SQLServerConnection{}
 
 	dsn, err := buildDSN(config)
@@ -44,7 +44,7 @@ func NewConnection(config SQLServerConfigParams) (*SQLServerConnection, error) {
 	return &conn, nil
 }
 
-func buildDSN(config SQLServerConfigParams) (string, error) {
+func buildDSN(config SQLServerConfig) (string, error) {
 	host := strings.TrimSpace(config.DBHost)
 	port := strings.TrimSpace(config.DBPort)
 	instance := strings.TrimSpace(config.DBInstance)
