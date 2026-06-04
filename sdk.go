@@ -272,6 +272,18 @@ func CtxWithToken(ctx context.Context, token string) context.Context {
 	return context.WithValue(ctx, jwt_token_key, token)
 }
 
+func CtxWithUsername(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, jwt_claims_username, username)
+}
+
+func CtxWithRequestOrigin(ctx context.Context, origin string) context.Context {
+	return context.WithValue(ctx, request_origin_key, origin)
+}
+
+func CtxWithSucursal(ctx context.Context, sucursal string) context.Context {
+	return context.WithValue(ctx, sucursal_codigo_key, sucursal)
+}
+
 // Esta función concatena la cadena de la empresa con los sufijos proporcionados.
 // Para una empresa "s1" y una lista de sufijos ["c1", "c2", "c3"], el resultado será "s1.c1.c2.c3".
 func Empresa(c context.Context, suffix ...string) string {

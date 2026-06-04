@@ -10,12 +10,14 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
+	identitygrpc "github.com/sfperusacdev/identitysdk/grpc"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"go.uber.org/fx"
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 const grpcReadyTimeout = 5 * time.Second
@@ -111,6 +113,8 @@ func (g *GrpcClient) Connection(ctx context.Context) (*gogrpc.ClientConn, error)
 	conn, err = gogrpc.NewClient(
 		grpcURL,
 		gogrpc.WithTransportCredentials(insecure.NewCredentials()),
+		gogrpc.WithUnaryInterceptor(g.unaryContextInterceptor),
+		gogrpc.WithStreamInterceptor(g.streamContextInterceptor),
 		gogrpc.WithConnectParams(gogrpc.ConnectParams{
 			Backoff: backoff.Config{
 				BaseDelay:  200 * time.Millisecond,
@@ -129,6 +133,54 @@ func (g *GrpcClient) Connection(ctx context.Context) (*gogrpc.ClientConn, error)
 	g.conns[grpcURL] = conn
 
 	return g.ensureConnection(ctx, grpcURL, conn)
+}
+
+func (g *GrpcClient) unaryContextInterceptor(
+	ctx context.Context,
+	method string,
+	req any,
+	reply any,
+	cc *gogrpc.ClientConn,
+	invoker gogrpc.UnaryInvoker,
+	opts ...gogrpc.CallOption,
+) error {
+	return invoker(g.outgoingContext(ctx), method, req, reply, cc, opts...)
+}
+
+func (g *GrpcClient) streamContextInterceptor(
+	ctx context.Context,
+	desc *gogrpc.StreamDesc,
+	cc *gogrpc.ClientConn,
+	method string,
+	streamer gogrpc.Streamer,
+	opts ...gogrpc.CallOption,
+) (gogrpc.ClientStream, error) {
+	return streamer(g.outgoingContext(ctx), desc, cc, method, opts...)
+}
+
+func (g *GrpcClient) outgoingContext(ctx context.Context) context.Context {
+	pairs := make([]string, 0, 12)
+	appendPair := func(key, value string) {
+		value = strings.TrimSpace(value)
+		if value == "" || strings.Contains(value, "####") {
+			return
+		}
+		pairs = append(pairs, key, value)
+	}
+
+	appendPair(identitygrpc.MetadataAPIKey, g.config.IdentityAccessToken())
+	appendPair(identitygrpc.MetadataToken, identitysdk.Token(ctx))
+	appendPair(identitygrpc.MetadataEmpresa, identitysdk.Empresa(ctx))
+	appendPair(identitygrpc.MetadataUsername, identitysdk.Username(ctx))
+	appendPair(identitygrpc.MetadataRequestOrigin, identitysdk.RequestOrigin(ctx))
+
+	_, sucursal := identitysdk.Empresa_Sucursal(ctx)
+	appendPair(identitygrpc.MetadataSucursal, sucursal)
+
+	if len(pairs) == 0 {
+		return ctx
+	}
+	return metadata.AppendToOutgoingContext(ctx, pairs...)
 }
 
 func (g *GrpcClient) ensureConnection(ctx context.Context, grpcURL string, conn *gogrpc.ClientConn) (*gogrpc.ClientConn, error) {

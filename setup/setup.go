@@ -19,6 +19,8 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
+	identitygrpc "github.com/sfperusacdev/identitysdk/grpc"
+	grpcclient "github.com/sfperusacdev/identitysdk/grpc/client"
 	"github.com/sfperusacdev/identitysdk/helpers/docxtopdf"
 	"github.com/sfperusacdev/identitysdk/helpers/facecropper"
 	"github.com/sfperusacdev/identitysdk/helpers/fotocheck"
@@ -36,6 +38,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
+	gogrpc "google.golang.org/grpc"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
@@ -582,10 +585,19 @@ func (s *Service) Run(opts ...fx.Option) error {
 				func(c configs.GeneralServiceConfigProvider) httpapi.ServeURLString {
 					return httpapi.ServeURLString(c.ListenAddress())
 				},
+				func(c configs.GeneralServiceConfigProvider) identitygrpc.ServeAddress {
+					return identitygrpc.ServeAddress(c.GRPCAddress())
+				},
 			),
 
 			fx.Provide(s.options.externalBridgeServiceProvider),
 			// tools
+			fx.Provide(
+				fx.Annotate(
+					grpcclient.NewGrpcClient,
+					fx.As(new(gogrpc.ClientConnInterface)),
+				),
+			),
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
 			fx.Provide(fotocheck.NewFotocheckBuilder),
@@ -612,8 +624,9 @@ func (s *Service) Run(opts ...fx.Option) error {
 			),
 			propertiesfx.Module,
 			monitoring.Module,
+			identitygrpc.Module,
 			httpapi.Module,
-			fx.Invoke(s.publishServiceDetails, httpapi.StartWebServer),
+			fx.Invoke(s.publishServiceDetails, identitygrpc.StartServer, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)
 		app.Run()

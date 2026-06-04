@@ -17,6 +17,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/gommon v0.4.2
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/pressly/goose/v3 v3.24.2
 	github.com/rs/xid v1.6.0
@@ -89,7 +90,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
-	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

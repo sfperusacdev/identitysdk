@@ -147,8 +147,6 @@ func StartWebServer(lc fx.Lifecycle, e *echo.Echo, address ServeURLString) {
 		OnStart: func(ctx context.Context) error {
 			go func() {
 				e.Use(middleware.CORS())
-				slog.Info("Starting HTTP server", "address", address)
-
 				if err := e.Start(string(address)); err != nil && err != http.ErrServerClosed {
 					slog.Error("HTTP server error", "error", err)
 				}

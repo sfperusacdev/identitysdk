@@ -13,6 +13,7 @@ type ConfigPath string
 
 type GeneralServiceConfigProvider interface {
 	ListenAddress() string
+	GRPCAddress() string
 	Identity() string
 	IdentityAccessToken() string
 	CacheDir() string
@@ -31,6 +32,7 @@ type ConfigsProviderFunc func(configPath ConfigPath) (GeneralServiceConfigProvid
 
 type GeneralServiceConfig struct {
 	ListenAddressValue       string         `mapstructure:"address" yaml:"address"`
+	GRPCAddressValue         string         `mapstructure:"grpc_address" yaml:"grpc_address"`
 	IdentityValue            string         `mapstructure:"identity" yaml:"identity"`
 	IdentityAccessTokenValue string         `mapstructure:"identity_access_token" yaml:"identity_access_token"`
 	CacheDirVal              string         `mapstructure:"cache_dir" yaml:"cache_dir"`
@@ -52,6 +54,11 @@ var _ DatabaseConfigProvider = (*GeneralServiceConfig)(nil)
 // ListenAddress implements GeneralServiceConfigProvider.
 func (c *GeneralServiceConfig) ListenAddress() string {
 	return c.ListenAddressValue
+}
+
+// GRPCAddress implements GeneralServiceConfigProvider.
+func (c *GeneralServiceConfig) GRPCAddress() string {
+	return c.GRPCAddressValue
 }
 
 // Identity implements GeneralServiceConfigProvider.
