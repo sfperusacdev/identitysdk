@@ -1,4 +1,4 @@
-package connection
+package PgConnection
 
 import (
 	"context"
@@ -25,12 +25,12 @@ type StorageManager interface {
 	WithTx(ctx context.Context, fc func(ctx context.Context) error) error
 }
 
-type connection struct{ conn *gorm.DB }
+type PgConnection struct{ conn *gorm.DB }
 
-var _ StorageManager = (*connection)(nil)
+var _ StorageManager = (*PgConnection)(nil)
 
 func NewConnection(config DBConfigParams) (StorageManager, error) {
-	var conn = connection{}
+	var conn = PgConnection{}
 	const layer = "host=%s user=%s password=%s dbname=%s port=%s sslmode=disable"
 	var dsn = fmt.Sprintf(layer, config.DBHost, config.DBUsername, config.DBPassword, config.DBName, config.DBPort)
 	if err := conn.openConnection(dsn, config.DBLogLevel); err != nil {
@@ -39,7 +39,7 @@ func NewConnection(config DBConfigParams) (StorageManager, error) {
 	return &conn, nil
 }
 
-func (*connection) level(s string) logger.LogLevel {
+func (*PgConnection) level(s string) logger.LogLevel {
 	switch s {
 	case "info":
 		return logger.Info
@@ -51,7 +51,7 @@ func (*connection) level(s string) logger.LogLevel {
 	return logger.Silent
 }
 
-func (c *connection) openConnection(dsn string, loglevel string) error {
+func (c *PgConnection) openConnection(dsn string, loglevel string) error {
 	var level = c.level(loglevel)
 	dialector := postgres.Open(dsn)
 	var err error
@@ -63,7 +63,7 @@ func (c *connection) openConnection(dsn string, loglevel string) error {
 		},
 	})
 	if err == nil && c.conn != nil {
-		log.Println("Database connection established successfully.")
+		log.Println("Database PgConnection established successfully.")
 	}
 	return err
 }
@@ -73,7 +73,7 @@ type key int
 
 var contextConnectionKey key
 
-func (c *connection) Conn(ctx context.Context) *gorm.DB {
+func (c *PgConnection) Conn(ctx context.Context) *gorm.DB {
 	value := ctx.Value(contextConnectionKey)
 	if db, ok := value.(*gorm.DB); ok {
 		return db.WithContext(ctx)
@@ -81,7 +81,7 @@ func (c *connection) Conn(ctx context.Context) *gorm.DB {
 	return c.conn.WithContext(ctx)
 }
 
-func (c *connection) WithTx(ctx context.Context, txFunc func(ctx context.Context) error) error {
+func (c *PgConnection) WithTx(ctx context.Context, txFunc func(ctx context.Context) error) error {
 	if txFunc == nil {
 		return nil
 	}
