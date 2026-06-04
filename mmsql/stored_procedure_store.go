@@ -15,6 +15,11 @@ type StoredProcedureStore struct {
 
 func NewStoredProcedureStore(filesystem fs.FS) func() (*StoredProcedureStore, error) {
 	return func() (*StoredProcedureStore, error) {
+		if filesystem == nil {
+			return &StoredProcedureStore{
+				procedures: map[string]string{},
+			}, nil
+		}
 		files, err := sqlreader.LoadSQLFiles(filesystem, ".")
 		if err != nil {
 			return nil, err

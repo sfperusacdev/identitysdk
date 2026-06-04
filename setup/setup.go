@@ -34,6 +34,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/helpers/workflows"
 	"github.com/sfperusacdev/identitysdk/httpapi"
+	"github.com/sfperusacdev/identitysdk/mmsql"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
@@ -62,6 +63,7 @@ type ServiceOptions struct {
 	details                       ServiceDetails
 	migrationsDir                 fs.FS
 	propertiesDir                 fs.FS
+	storedProceduresDir           fs.FS
 	storageManagerProvider        StorageManagerProvider
 	externalBridgeServiceProvider ExternalBridgeServiceProvider
 }
@@ -85,6 +87,16 @@ func WithSystemPropertiesSource(sf fs.FS) ServiceOption {
 			return
 		}
 		o.propertiesDir = sf
+	}
+}
+
+func WithStoredProcedureSource(sf fs.FS) ServiceOption {
+	return func(o *ServiceOptions) {
+		if sf == nil {
+			slog.Warn("Stored procedures filesystem is nil, operation skipped")
+			return
+		}
+		o.storedProceduresDir = sf
 	}
 }
 
@@ -569,6 +581,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			}
 			systemProperties = entries
 		}
+
 		opts = append([]fx.Option{fx.Invoke(s.setupIdentity)}, opts...)
 		opts = append(
 			opts,
@@ -603,7 +616,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			fx.Provide(fotocheck.NewFotocheckBuilder),
 			fx.Provide(scripting.NewScriptCommonService),
 			fx.Provide(workflows.NewDocumentWorkflowStateManager),
-
+			fx.Provide(mmsql.NewStoredProcedureStore(s.options.storedProceduresDir)),
 			fx.Provide(
 				fx.Annotate(
 					propsprovider.NewSystemPropsPgProvider,
