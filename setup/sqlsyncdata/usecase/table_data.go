@@ -82,9 +82,13 @@ func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req Tabl
 		)
 	}
 
-	existingRows, err := s.repository.GetTableData(ctx, domain, *descriptor, req.SyncAt)
-	if err != nil {
-		return nil, err
+	existingRows := []map[string]any{}
+	if !descriptor.WriteOnly {
+		var err error
+		existingRows, err = s.repository.GetTableData(ctx, domain, *descriptor, req.SyncAt)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	incomingKeySet := make(map[string]struct{}, len(req.Payload))

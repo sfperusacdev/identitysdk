@@ -32,6 +32,8 @@ type TableDescriptor struct {
 	FullSync bool
 
 	ReadOnly bool
+
+	WriteOnly bool
 }
 
 func (td TableDescriptor) StartSyncAt() time.Time {

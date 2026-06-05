@@ -32,6 +32,7 @@ type TableInfoResponse struct {
 	StartSync     int64  `json:"start_sync"`
 	RetentionDays uint   `json:"retention_days"`
 	ReadyOnly     bool   `json:"read_only"`
+	WriteOnly     bool   `json:"write_only"`
 }
 
 func (s *SQLTableUsecase) getDescriptor(tableName string) (*descriptor.TableDescriptor, error) {
@@ -65,6 +66,7 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 			StartSync:     desc.StartSyncAt().UnixMilli(),
 			RetentionDays: desc.SinceDays,
 			ReadyOnly:     isReadyOnly,
+			WriteOnly:     desc.WriteOnly,
 		})
 	}
 	return tablescript, nil
