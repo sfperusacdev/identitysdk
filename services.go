@@ -21,6 +21,8 @@ const (
 	OVR_GENERAL      = "UNSAFE_DEV_ONLY_OVERRIDE_GENERAL_URL"
 	OVR_WHATSAPP_API = "UNSAFE_DEV_ONLY_OVERRIDE_WHATSAPP_API_URL"
 	OVR_MENSAJERIA   = "UNSAFE_DEV_ONLY_OVERRIDE_MENSAJERIA_URL"
+	OVR_RASTREO      = "UNSAFE_DEV_ONLY_OVERRIDE_RASTREO_URL"
+	OVR_TRANSPORTE   = "UNSAFE_DEV_ONLY_OVERRIDE_TRANSPORTE_URL"
 )
 
 var overrides = map[string]string{}
@@ -42,6 +44,8 @@ func init() {
 	load(OVR_GENERAL)
 	load(OVR_WHATSAPP_API)
 	load(OVR_MENSAJERIA)
+	load(OVR_RASTREO)
+	load(OVR_TRANSPORTE)
 }
 
 type queryServiceURLResponse struct {
@@ -111,6 +115,8 @@ const (
 	tareoapp_service     = "com.sfperusac.tareoapp"
 	whatsapp_api_service = "con.sfperusac.whatsapp_api"
 	mensajeria_service   = "com.sfperusac.mensajeria"
+	rastreo_service      = "com.sfperusac.rastreo"
+	transporte_service   = "com.sfperusac.transporte"
 )
 
 func GetAlmacenServiceURL(ctx context.Context, companyCode string) (string, error) {
@@ -147,6 +153,14 @@ func GetWhatsAppApiServiceURL(ctx context.Context, companyCode string) (string, 
 
 func GetMensajeriaServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_MENSAJERIA, mensajeria_service)
+}
+
+func GetRastreoServiceURL(ctx context.Context, companyCode string) (string, error) {
+	return overrideOrFetch(ctx, companyCode, OVR_RASTREO, rastreo_service)
+}
+
+func GetTransporteServiceURL(ctx context.Context, companyCode string) (string, error) {
+	return overrideOrFetch(ctx, companyCode, OVR_TRANSPORTE, transporte_service)
 }
 
 func Tz(ctx context.Context) (*time.Location, error) {
