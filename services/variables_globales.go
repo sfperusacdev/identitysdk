@@ -10,6 +10,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
+// Deprecated: use bridge.Variables.Global.Read instead.
 func (s *ExternalBridgeService) ReadVariableGlobal(ctx context.Context, variableName string) (string, error) {
 	var company = "____global____system____domain____"
 	var cachedValue = variablecache.DefaultCache.GetVariable(ctx, company, variableName)

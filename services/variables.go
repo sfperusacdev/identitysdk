@@ -14,11 +14,13 @@ import (
 
 var ErrVariableNotFound = errors.New("variable not found")
 
+// Deprecated: use bridge.Variables.Me.Read or bridge.Variables.Read instead.
 func (s *ExternalBridgeService) ReadVariable(ctx context.Context, variableName string) (string, error) {
 	var company, _ = s.readCompanyAndToken(ctx)
 	return s.ReadCompanyVariable(ctx, company, variableName)
 }
 
+// Deprecated: use bridge.Variables.Read instead.
 func (s *ExternalBridgeService) ReadCompanyVariable(ctx context.Context, company string, variableName string) (string, error) {
 	var cachedValue = variablecache.DefaultCache.GetVariable(ctx, company, variableName)
 	if cachedValue != nil {
