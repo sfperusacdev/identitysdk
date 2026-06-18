@@ -2,6 +2,7 @@ package bridge
 
 import (
 	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
+	"github.com/sfperusacdev/identitysdk/bridge/storage"
 	"github.com/sfperusacdev/identitysdk/bridge/variables"
 	"go.uber.org/fx"
 )
@@ -15,6 +16,7 @@ var Module = fx.Module("identitysdk/bridge",
 		variables.NewGlobalVariablesService,
 		variables.NewMeVariablesService,
 		variables.NewVariablesService,
+		storage.NewStorageService,
 		NewBridgeService,
 	),
 )

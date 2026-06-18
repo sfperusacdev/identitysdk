@@ -29,6 +29,7 @@ func isValidURL(rawURL string) bool {
 	return true
 }
 
+// Deprecated: use bridge.Storage.Create or bridge.Storage.CreateGlobal instead.
 func (s *ExternalBridgeService) CreateNewFileStorer(ctx context.Context, bucket string, isGlobal ...bool) (storage.FileStorer, error) {
 	var readVariablef func(ctx context.Context, key string) (string, error)
 	if len(isGlobal) > 0 && isGlobal[0] {
