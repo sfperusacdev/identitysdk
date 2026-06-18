@@ -15,11 +15,7 @@ import (
 )
 
 func ctxWithTZ(req *http.Request, loc *time.Location) *http.Request {
-	ctx := identitysdk.BuildContext(
-		context.Background(),
-		"",
-		&entities.JwtData{Jwt: entities.Jwt{Zona: loc.String()}},
-	)
+	ctx := identitysdk.CtxWithJwtClaims(context.Background(), entities.Jwt{Zona: loc.String()})
 
 	return req.WithContext(ctx)
 }

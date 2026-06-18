@@ -35,14 +35,10 @@ func CheckJwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if token == "" {
 			return answer.Err(c, errs.BadRequestDirect("[close] token no encontrado"))
 		}
-		data, err := ValidateTokenWithCache(c.Request().Context(), token)
+		newContext, err := BuildContext(c.Request().Context(), token)
 		if err != nil {
 			return answer.Err(c, err)
 		}
-		if data == nil {
-			return answer.Err(c, errs.BadRequestDirect("[close] session invalida"))
-		}
-		var newContext = BuildContext(c.Request().Context(), token, data)
 
 		requestOrigin := c.Request().Header.Get("X-Origin")
 		newContext = context.WithValue(newContext, request_origin_key, requestOrigin)
@@ -147,7 +143,18 @@ func NewCheckAccessKeyMiddleware() AccessKeyMiddleware {
 	return CheckAccessKeyMiddleware
 }
 
-func BuildContext(ctx context.Context, token string, data *entities.JwtData) context.Context {
+func BuildContext(ctx context.Context, token string) (context.Context, error) {
+	data, err := ValidateTokenWithCache(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		return nil, errs.BadRequestDirect("[close] session invalida")
+	}
+	return buildContextFromData(ctx, token, data), nil
+}
+
+func buildContextFromData(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
 	newctx = context.WithValue(newctx, jwt_claims_username, data.Jwt.Username)
 	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
@@ -185,9 +192,12 @@ func EnsureSucursalQueryParamMiddleware(next echo.HandlerFunc) echo.HandlerFunc 
 	}
 }
 
-func BuildContextWithSucursal(ctx context.Context, token, sucursal string, data *entities.JwtData) context.Context {
-	ctx = BuildContext(ctx, token, data)
-	return context.WithValue(ctx, sucursal_codigo_key, sucursal)
+func BuildContextWithSucursal(ctx context.Context, token, sucursal string) (context.Context, error) {
+	ctx, err := BuildContext(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return context.WithValue(ctx, sucursal_codigo_key, sucursal), nil
 }
 
 func NewSucursalQueryParamMiddleware() SucursalQueryParamMiddleware {
@@ -274,6 +284,21 @@ func CtxWithToken(ctx context.Context, token string) context.Context {
 
 func CtxWithUsername(ctx context.Context, username string) context.Context {
 	return context.WithValue(ctx, jwt_claims_username, username)
+}
+
+func CtxWithJwtClaims(ctx context.Context, claims entities.Jwt) context.Context {
+	ctx = context.WithValue(ctx, jwt_claims_key, claims)
+	if claims.Empresa != "" {
+		ctx = context.WithValue(ctx, domain_key, claims.Empresa)
+	}
+	if claims.Username != "" {
+		ctx = context.WithValue(ctx, jwt_claims_username, claims.Username)
+	}
+	return ctx
+}
+
+func CtxWithSession(ctx context.Context, session entities.Session) context.Context {
+	return context.WithValue(ctx, jwt_session_key, session)
 }
 
 func CtxWithRequestOrigin(ctx context.Context, origin string) context.Context {
@@ -402,7 +427,8 @@ func CloneContext(ctx context.Context) context.Context {
 
 	newCtx = context.WithValue(newCtx, domain_key, Empresa(ctx))
 	newCtx = context.WithValue(newCtx, jwt_claims_username, Username(ctx))
-	newCtx = context.WithValue(newCtx, sucursal_codigo_key, Sucursal(ctx))
+	_, sucursal := Empresa_Sucursal(ctx)
+	newCtx = context.WithValue(newCtx, sucursal_codigo_key, sucursal)
 	newCtx = context.WithValue(newCtx, jwt_token_key, Token(ctx))
 	newCtx = context.WithValue(newCtx, request_origin_key, RequestOrigin(ctx))
 

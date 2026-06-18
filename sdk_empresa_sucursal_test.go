@@ -112,3 +112,18 @@ func TestSucursal(t *testing.T) {
 		})
 	}
 }
+
+func TestCloneContextPreservesSucursal(t *testing.T) {
+	ctx := identitysdk.CloneContext(createContext())
+
+	empresa, sucursal := identitysdk.Empresa_Sucursal(ctx)
+	if empresa != "sfperu" {
+		t.Errorf("expected empresa 'sfperu', got '%s'", empresa)
+	}
+	if sucursal != "sf001" {
+		t.Errorf("expected sucursal 'sf001', got '%s'", sucursal)
+	}
+	if got := identitysdk.Sucursal(ctx, "%"); got != "sfperu.sf001.%" {
+		t.Errorf("expected sucursal prefix 'sfperu.sf001.%%', got '%s'", got)
+	}
+}

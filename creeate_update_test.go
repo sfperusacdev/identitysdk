@@ -12,10 +12,9 @@ import (
 )
 
 func createContext() context.Context {
-	return identitysdk.BuildContextWithSucursal(context.Background(), "", "sf001", &entities.JwtData{
-		Jwt:     entities.Jwt{Username: "kevin", Empresa: "sfperu"},
-		Session: entities.Session{Company: "sfperu"},
-	})
+	ctx := identitysdk.CtxWithJwtClaims(context.Background(), entities.Jwt{Username: "kevin", Empresa: "sfperu"})
+	ctx = identitysdk.CtxWithSession(ctx, entities.Session{Company: "sfperu"})
+	return identitysdk.CtxWithSucursal(ctx, "sf001")
 }
 
 type testStruct struct {

@@ -16,7 +16,7 @@ func NewPermissionMiddlewareBuilder() PermissionMiddlewareBuilder {
 		return func(next echo.HandlerFunc) echo.HandlerFunc {
 			return func(c echo.Context) error {
 				ctx := c.Request().Context()
-				sucursal := identitysdk.Sucursal(ctx)
+				_, sucursal := identitysdk.Empresa_Sucursal(ctx)
 
 				if identitysdk.HasPermission(ctx, "admin", sucursal) {
 					return next(c)
