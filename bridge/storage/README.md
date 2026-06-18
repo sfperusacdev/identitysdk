@@ -20,6 +20,37 @@ Para usar un lector de variables custom:
 storer, err := bridge.Storage.CreateWith(ctx, "bucket/path", readVariable)
 ```
 
+## FileStorer
+
+La interfaz principal esta compuesta por interfaces pequenas:
+
+```go
+type FileStorer interface {
+	Reader
+	Writer
+	Remover
+	Lister
+}
+```
+
+Metodos base:
+
+```go
+Read(ctx, name)
+Write(ctx, name, data)
+WriteFrom(ctx, name, reader)
+Remove(ctx, name)
+List(ctx, prefix)
+```
+
+Operaciones derivadas disponibles como helpers del paquete:
+
+```go
+storage.Replace(ctx, storer, name, data)
+storage.WriteBatch(ctx, storer, files)
+storage.WriteFromBatch(ctx, storer, files)
+```
+
 ## Driver
 
 El driver se define con:

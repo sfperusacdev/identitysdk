@@ -8,12 +8,10 @@ import (
 	"log/slog"
 	"path"
 	"strings"
-	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"github.com/panjf2000/ants/v2"
 )
 
 type S3FileStore struct {
@@ -38,8 +36,8 @@ func (s *S3FileStore) getFullPath(filepath string) string {
 	return path.Join(s.subdirectory, filepath)
 }
 
-func (s *S3FileStore) List(ctx context.Context, filepath string) ([]string, error) {
-	prefix := s.getFullPath(filepath)
+func (s *S3FileStore) List(ctx context.Context, prefix string) ([]string, error) {
+	prefix = s.getFullPath(prefix)
 	out, err := s.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.bucketName),
 		Prefix: aws.String(strings.Trim(prefix, "/")),
@@ -56,8 +54,8 @@ func (s *S3FileStore) List(ctx context.Context, filepath string) ([]string, erro
 	return keys, nil
 }
 
-func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error) {
-	fullPath := s.getFullPath(filepath)
+func (s *S3FileStore) Read(ctx context.Context, name string) ([]byte, error) {
+	fullPath := s.getFullPath(name)
 	obj, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
@@ -80,8 +78,8 @@ func (s *S3FileStore) Read(ctx context.Context, filepath string) ([]byte, error)
 	return buf.Bytes(), nil
 }
 
-func (s *S3FileStore) SaveR(ctx context.Context, path string, r io.Reader) error {
-	fullPath := s.getFullPath(path)
+func (s *S3FileStore) WriteFrom(ctx context.Context, name string, r io.Reader) error {
+	fullPath := s.getFullPath(name)
 	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
@@ -93,54 +91,12 @@ func (s *S3FileStore) SaveR(ctx context.Context, path string, r io.Reader) error
 	return err
 }
 
-func (s *S3FileStore) Save(ctx context.Context, path string, data []byte) error {
-	return s.SaveR(ctx, path, bytes.NewReader(data))
+func (s *S3FileStore) Write(ctx context.Context, name string, data []byte) error {
+	return s.WriteFrom(ctx, name, bytes.NewReader(data))
 }
 
-func (s *S3FileStore) SaveRBatch(ctx context.Context, files map[string]io.Reader) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error, len(files))
-
-	pool, err := ants.NewPool(10)
-	if err != nil {
-		return err
-	}
-	defer pool.Release()
-
-	for path, data := range files {
-		p := path
-		d := data
-		wg.Add(1)
-		err := pool.Submit(func() {
-			defer wg.Done()
-			if err := s.SaveR(ctx, p, d); err != nil {
-				errCh <- err
-			}
-		})
-		if err != nil {
-			wg.Done()
-			return err
-		}
-	}
-
-	wg.Wait()
-	close(errCh)
-	if len(errCh) > 0 {
-		return <-errCh
-	}
-	return nil
-}
-
-func (s *S3FileStore) SaveBatch(ctx context.Context, files map[string][]byte) error {
-	readers := make(map[string]io.Reader, len(files))
-	for key, value := range files {
-		readers[key] = bytes.NewReader(value)
-	}
-	return s.SaveRBatch(ctx, readers)
-}
-
-func (s *S3FileStore) Delete(ctx context.Context, filepath string) error {
-	fullPath := s.getFullPath(filepath)
+func (s *S3FileStore) Remove(ctx context.Context, name string) error {
+	fullPath := s.getFullPath(name)
 	_, err := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fullPath),
@@ -149,16 +105,4 @@ func (s *S3FileStore) Delete(ctx context.Context, filepath string) error {
 		slog.Error("Failed to delete object from S3", "bucket", s.bucketName, "key", fullPath, "error", err)
 	}
 	return err
-}
-
-func (s *S3FileStore) Replace(ctx context.Context, path string, data []byte) error {
-	if err := s.Delete(ctx, path); err != nil {
-		slog.Error("Failed to delete object before replacing in S3", "bucket", s.bucketName, "key", path, "error", err)
-		return err
-	}
-	if err := s.Save(ctx, path, data); err != nil {
-		slog.Error("Failed to save object while replacing in S3", "bucket", s.bucketName, "key", path, "error", err)
-		return err
-	}
-	return nil
 }
