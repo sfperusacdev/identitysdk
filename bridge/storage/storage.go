@@ -38,6 +38,12 @@ func (s *StorageService) Create(ctx context.Context, bucket string) (FileStorer,
 	return s.CreateWith(ctx, bucket, s.variables.Me.Read)
 }
 
+func (s *StorageService) CreateCompany(ctx context.Context, company string, bucket string) (FileStorer, error) {
+	return s.CreateWith(ctx, bucket, func(ctx context.Context, key string) (string, error) {
+		return s.variables.Read(ctx, company, key)
+	})
+}
+
 func (s *StorageService) CreateGlobal(ctx context.Context, bucket string) (FileStorer, error) {
 	return s.CreateWith(ctx, bucket, s.variables.Global.Read)
 }

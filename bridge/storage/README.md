@@ -14,6 +14,12 @@ Para variables globales:
 storer, err := bridge.Storage.CreateGlobal(ctx, "bucket/path")
 ```
 
+Para variables de una empresa/dominio especifico:
+
+```go
+storer, err := bridge.Storage.CreateCompany(ctx, "empresa", "bucket/path")
+```
+
 Para usar un lector de variables custom:
 
 ```go
