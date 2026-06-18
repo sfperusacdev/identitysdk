@@ -11,7 +11,6 @@ import (
 	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/sfperusacdev/identitysdk/xreq"
-	"go.uber.org/fx"
 )
 
 const meVariablesEndpoint = `/api/v1/companies/me/properties`
@@ -22,7 +21,6 @@ type MeVariablesService struct {
 }
 
 func NewMeVariablesService(
-	lc fx.Lifecycle,
 	identity bridgeidentity.Provider,
 ) (*MeVariablesService, error) {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
@@ -34,11 +32,6 @@ func NewMeVariablesService(
 		cache:    &variablesCache{cache: cache},
 		identity: identity,
 	}
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return s.cache.close()
-		},
-	})
 	return s, nil
 }
 

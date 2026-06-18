@@ -11,7 +11,6 @@ import (
 	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/sfperusacdev/identitysdk/xreq"
-	"go.uber.org/fx"
 )
 
 type VariablesService struct {
@@ -22,7 +21,6 @@ type VariablesService struct {
 }
 
 func NewVariablesService(
-	lc fx.Lifecycle,
 	global *GlobalVariablesService,
 	me *MeVariablesService,
 	identity bridgeidentity.Provider,
@@ -38,11 +36,6 @@ func NewVariablesService(
 		cache:    &variablesCache{cache: cache},
 		identity: identity,
 	}
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return s.cache.close()
-		},
-	})
 	return s, nil
 }
 

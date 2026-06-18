@@ -47,10 +47,6 @@ func (c *variablesCache) set(key string, variables []entities.Variable) error {
 	return c.cache.Set(key, encodedData)
 }
 
-func (c *variablesCache) close() error {
-	return c.cache.Close()
-}
-
 func encodeVariables(variables []entities.Variable) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(variables); err != nil {

@@ -11,7 +11,6 @@ import (
 	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/sfperusacdev/identitysdk/xreq"
-	"go.uber.org/fx"
 )
 
 const globalVariablesCompany = "____global____system____domain____"
@@ -22,7 +21,6 @@ type GlobalVariablesService struct {
 }
 
 func NewGlobalVariablesService(
-	lc fx.Lifecycle,
 	identity bridgeidentity.Provider,
 ) (*GlobalVariablesService, error) {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
@@ -34,11 +32,6 @@ func NewGlobalVariablesService(
 		cache:    &variablesCache{cache: cache},
 		identity: identity,
 	}
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return s.cache.close()
-		},
-	})
 	return s, nil
 }
 
