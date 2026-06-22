@@ -151,10 +151,10 @@ func BuildContext(ctx context.Context, token string) (context.Context, error) {
 	if data == nil {
 		return nil, errs.BadRequestDirect("[close] session invalida")
 	}
-	return buildContextFromData(ctx, token, data), nil
+	return BuildContextFromData(ctx, token, data), nil
 }
 
-func buildContextFromData(ctx context.Context, token string, data *entities.JwtData) context.Context {
+func BuildContextFromData(ctx context.Context, token string, data *entities.JwtData) context.Context {
 	newctx := context.WithValue(ctx, jwt_claims_key, data.Jwt)
 	newctx = context.WithValue(newctx, jwt_claims_username, data.Jwt.Username)
 	newctx = context.WithValue(newctx, jwt_session_key, data.Session)
