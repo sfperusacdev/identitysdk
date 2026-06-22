@@ -20,7 +20,7 @@ const ServiceTag = `group:"grpc-services"`
 
 type ServeAddress string
 
-type Service interface {
+type GrpcService interface {
 	Register(server gogrpc.ServiceRegistrar)
 }
 
@@ -36,12 +36,12 @@ var Module = fx.Module("grpc-server",
 func AsService(fn any) any {
 	return fx.Annotate(
 		fn,
-		fx.As(new(Service)),
+		fx.As(new(GrpcService)),
 		fx.ResultTags(ServiceTag),
 	)
 }
 
-func NewServer(services []Service) *gogrpc.Server {
+func NewServer(services []GrpcService) *gogrpc.Server {
 	server := gogrpc.NewServer(
 		gogrpc.UnaryInterceptor(apiKeyUnaryInterceptor),
 		gogrpc.StreamInterceptor(apiKeyStreamInterceptor),
