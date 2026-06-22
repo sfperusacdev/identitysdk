@@ -40,7 +40,6 @@ import (
 	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
-	gogrpc "google.golang.org/grpc"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
@@ -606,12 +605,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 
 			fx.Provide(s.options.externalBridgeServiceProvider),
 			// tools
-			fx.Provide(
-				fx.Annotate(
-					grpcclient.NewGrpcClient,
-					fx.As(new(gogrpc.ClientConnInterface)),
-				),
-			),
+			grpcclient.Module,
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
 			fx.Provide(fotocheck.NewFotocheckBuilder),
