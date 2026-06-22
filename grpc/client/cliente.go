@@ -27,16 +27,18 @@ var errGrpcConnShutdown = errors.New("grpc connection is shutdown")
 type GrpcClient struct {
 	config configs.GeneralServiceConfigProvider
 
-	mu    sync.RWMutex
-	conns map[string]*gogrpc.ClientConn
+	mu           sync.RWMutex
+	conns        map[string]*gogrpc.ClientConn
+	resourceCode string
 }
 
 var _ gogrpc.ClientConnInterface = (*GrpcClient)(nil)
 
-func NewGrpcClient(lc fx.Lifecycle, config configs.GeneralServiceConfigProvider) *GrpcClient {
+func NewGrpcClient(lc fx.Lifecycle, resourceCode string, config configs.GeneralServiceConfigProvider) *GrpcClient {
 	client := &GrpcClient{
-		config: config,
-		conns:  make(map[string]*gogrpc.ClientConn),
+		resourceCode: resourceCode,
+		config:       config,
+		conns:        make(map[string]*gogrpc.ClientConn),
 	}
 
 	lc.Append(fx.Hook{
@@ -50,7 +52,7 @@ func NewGrpcClient(lc fx.Lifecycle, config configs.GeneralServiceConfigProvider)
 
 // Invoke implements [gogrpc.ClientConnInterface].
 func (g *GrpcClient) Invoke(ctx context.Context, method string, args any, reply any, opts ...gogrpc.CallOption) error {
-	conn, err := g.Connection(ctx)
+	conn, err := g.Connection(ctx, g.resourceCode)
 	if err != nil {
 		return err
 	}
@@ -60,7 +62,7 @@ func (g *GrpcClient) Invoke(ctx context.Context, method string, args any, reply 
 
 // NewStream implements [gogrpc.ClientConnInterface].
 func (g *GrpcClient) NewStream(ctx context.Context, desc *gogrpc.StreamDesc, method string, opts ...gogrpc.CallOption) (gogrpc.ClientStream, error) {
-	conn, err := g.Connection(ctx)
+	conn, err := g.Connection(ctx, g.resourceCode)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +70,8 @@ func (g *GrpcClient) NewStream(ctx context.Context, desc *gogrpc.StreamDesc, met
 	return conn.NewStream(ctx, desc, method, opts...)
 }
 
-func (g *GrpcClient) Connection(ctx context.Context) (*gogrpc.ClientConn, error) {
-	grpcURL, err := g.requestGrpcLocation(ctx)
+func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogrpc.ClientConn, error) {
+	grpcURL, err := g.requestGrpcLocation(ctx, resourceCode)
 	if err != nil {
 		return nil, err
 	}
@@ -263,10 +265,9 @@ func (g *GrpcClient) close() error {
 	return closeErr
 }
 
-func (g *GrpcClient) requestGrpcLocation(ctx context.Context) (string, error) {
+func (g *GrpcClient) requestGrpcLocation(ctx context.Context, resourceCode string) (string, error) {
 	accessToken := g.config.IdentityAccessToken()
 	companyCode := identitysdk.Empresa(ctx)
-	resourceCode := identitysdk.GetIdentityServer()
 
 	var apiResponse struct {
 		Message string `json:"message"`
