@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/minio/minio-go/v7"
 	miniocredentials "github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/sfperusacdev/identitysdk/bridge/variables"
+	"github.com/sfperusacdev/identitysdk/sark_services/variables"
 )
 
 const (

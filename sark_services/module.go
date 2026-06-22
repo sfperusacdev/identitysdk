@@ -1,13 +1,13 @@
-package bridge
+package sark_services
 
 import (
-	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
-	"github.com/sfperusacdev/identitysdk/bridge/storage"
-	"github.com/sfperusacdev/identitysdk/bridge/variables"
+	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
+	"github.com/sfperusacdev/identitysdk/sark_services/storage"
+	"github.com/sfperusacdev/identitysdk/sark_services/variables"
 	"go.uber.org/fx"
 )
 
-var Module = fx.Module("identitysdk/bridge",
+var Module = fx.Module("identitysdk/sark_services",
 	fx.Provide(
 		fx.Annotate(
 			bridgeidentity.NewDefaultProvider,

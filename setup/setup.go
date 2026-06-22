@@ -18,7 +18,6 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
-	identitybridge "github.com/sfperusacdev/identitysdk/bridge"
 	"github.com/sfperusacdev/identitysdk/configs"
 	identitygrpc "github.com/sfperusacdev/identitysdk/grpc"
 	grpcclient "github.com/sfperusacdev/identitysdk/grpc/client"
@@ -37,6 +36,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/httpapi"
 	"github.com/sfperusacdev/identitysdk/mmsql"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
+	identitybridge "github.com/sfperusacdev/identitysdk/sark_services"
 	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"

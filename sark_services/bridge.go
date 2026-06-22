@@ -1,8 +1,8 @@
-package bridge
+package sark_services
 
 import (
-	"github.com/sfperusacdev/identitysdk/bridge/storage"
-	"github.com/sfperusacdev/identitysdk/bridge/variables"
+	"github.com/sfperusacdev/identitysdk/sark_services/storage"
+	"github.com/sfperusacdev/identitysdk/sark_services/variables"
 )
 
 type BridgeService struct {

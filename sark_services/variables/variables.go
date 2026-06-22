@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/allegro/bigcache/v3"
-	bridgeidentity "github.com/sfperusacdev/identitysdk/bridge/identity"
 	"github.com/sfperusacdev/identitysdk/entities"
+	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
