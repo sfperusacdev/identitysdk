@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package contratos.v1;
+
+option go_package = "github.com/sfperusacdev/identitysdk/grpc/gen/contratos;contratospb";
+
+import "google/protobuf/empty.proto";
+
+message Request{
+  string company_code= 1;
+}
+message Trabajadores{
+  message Item{
+    string codigo= 1;
+    string nombre_completo= 2;
+    string registro_id= 3;
+    string dni= 4;
+    string estado= 5;
+    string nombres= 6;
+    string apellido_paterno= 7;
+    string apellido_materno= 8;
+    string fecha_nacimiento= 9;
+    string ubigeo_renie_nacimiento= 10;
+    string fin_contrato= 11;
+    string estado_civil= 12;
+    string departamento= 13;
+    string provincia= 14;
+    string distrito= 15;
+    string direccion= 16;
+    string ubigeo_renie= 17;
+    string telefono= 18;
+    string email= 19;
+    string formato_contrato_trabajadors_id= 20;
+    double jornal= 21;
+    string tipo_personals_id= 22;
+    string fecha_registro= 23;
+    string was_print_at= 24;
+    string tipo_documento= 25;
+    string inicio_contrato= 26;
+    string deleted_at= 27;
+    string sexo= 28;
+    string grado_instruccion_id= 29;
+    string exported_external_at= 30;
+    string image_location= 31;
+    string fotocheck_was_printed_at= 32;
+    string image_dni_front_location= 33;
+    string image_dni_back_location= 34;
+    string tipo_personal= 35;
+    string grado_instruccion= 36;
+    string formato_contrato_trabajadors= 37;
+    string planilla_id= 38;
+  }
+  repeated Item items=1;
+}
+
+message Planillas {
+  message Item {
+    string id= 1;
+    string description= 2;
+  }
+  repeated Item items= 1;
+}
+
+message SimpleTrabajador {
+  string empresa= 1;
+  string codigo= 2;
+  string nombres= 3;
+  string apellido_paterno= 4;
+  string apellido_materno= 5;
+  string planilla_id= 6;
+  string telefono= 7;
+  string email= 8;
+  string direccion= 9;
+  string username= 10;
+}
+
+message RequestDeleteTrabajador{
+  repeated string codigos=1;
+}
+
+message RequestUpdateTrabajadorIdentityInfo {
+  string empresa= 1;
+  string codigo= 2;
+  string device_pin= 3;
+  string device_card= 4;
+}
+
+
+message RequestUpdateTrabajadorBioData {
+  message FPItem {      
+    int64  index= 3;
+    string template= 4;
+  }
+  string empresa= 1;
+  string codigo= 2;
+  repeated FPItem data= 3;
+}
+
+message FastResumenTrabajadores {
+  message Trabajador{
+    string codigo= 1;
+    string dni= 2;
+    string nombre= 3;
+    string apellido_paterno= 4;
+    string apellido_materno= 5;
+  }
+  repeated Trabajador records=1;
+}
+
+service TrabajadoresGRPCService{
+  rpc GetPlanillas(Request) returns (Planillas);
+  rpc GetTrabajadores (Request) returns(Trabajadores);
+  rpc FastCreateTrabajador(SimpleTrabajador) returns(google.protobuf.Empty);
+  rpc UpdateTrabajadorIdentityInfo(RequestUpdateTrabajadorIdentityInfo) 
+    returns(google.protobuf.Empty);
+  rpc UpdateTrabajadorBioData(RequestUpdateTrabajadorBioData) 
+    returns(google.protobuf.Empty);
+  rpc GetFastResumenTrabajadores(Request) returns(FastResumenTrabajadores);    
+}

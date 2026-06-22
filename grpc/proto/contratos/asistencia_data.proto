@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package contratos.v1;
+
+option go_package = "github.com/sfperusacdev/identitysdk/grpc/gen/contratos;contratospb";
+
+
+message TrabajadoresCodigos{  
+  string domain =1;
+  repeated string codigos = 2;
+  bool incluir_inactivos = 3;
+}
+
+message TrabajadorData{
+  string codigo = 1;
+  string nombre = 2;
+  string card = 3;
+  string pass = 4;
+  message Finger {
+    int64 index = 1;
+    string tmp = 2;
+  }
+  repeated Finger huellas = 5;
+}
+message ResponseInfoTrabajadores{
+  repeated  TrabajadorData trabajadores = 1;
+}
+
+service AsistenciaMarcadorService{
+  rpc FindInfoTrabajadores (TrabajadoresCodigos) 
+      returns (ResponseInfoTrabajadores);
+}
