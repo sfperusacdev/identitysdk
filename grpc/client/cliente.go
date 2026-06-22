@@ -170,7 +170,7 @@ func (g *GrpcClient) outgoingContext(ctx context.Context) context.Context {
 		pairs = append(pairs, key, value)
 	}
 
-	appendPair(identitygrpc.MetadataAPIKey, g.config.IdentityAccessToken())
+	appendPair(identitygrpc.MetadataAccessToken, g.config.IdentityAccessToken())
 	appendPair(identitygrpc.MetadataToken, identitysdk.Token(ctx))
 	appendPair(identitygrpc.MetadataEmpresa, identitysdk.Empresa(ctx))
 	appendPair(identitygrpc.MetadataUsername, identitysdk.Username(ctx))

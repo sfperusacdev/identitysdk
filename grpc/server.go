@@ -43,8 +43,8 @@ func AsService(fn any) any {
 
 func NewServer(services []GrpcServiceRegister) *gogrpc.Server {
 	server := gogrpc.NewServer(
-		gogrpc.UnaryInterceptor(apiKeyUnaryInterceptor),
-		gogrpc.StreamInterceptor(apiKeyStreamInterceptor),
+		gogrpc.UnaryInterceptor(accessTokenUnaryInterceptor),
+		gogrpc.StreamInterceptor(accessTokenStreamInterceptor),
 	)
 	for _, service := range services {
 		service.Register(server)
@@ -52,26 +52,26 @@ func NewServer(services []GrpcServiceRegister) *gogrpc.Server {
 	return server
 }
 
-func apiKeyUnaryInterceptor(
+func accessTokenUnaryInterceptor(
 	ctx context.Context,
 	req any,
 	info *gogrpc.UnaryServerInfo,
 	handler gogrpc.UnaryHandler,
 ) (any, error) {
-	ctx, err := contextWithAPIKeyMetadata(ctx)
+	ctx, err := contextWithAccessTokenMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return handler(ctx, req)
 }
 
-func apiKeyStreamInterceptor(
+func accessTokenStreamInterceptor(
 	srv any,
 	stream gogrpc.ServerStream,
 	info *gogrpc.StreamServerInfo,
 	handler gogrpc.StreamHandler,
 ) error {
-	ctx, err := contextWithAPIKeyMetadata(stream.Context())
+	ctx, err := contextWithAccessTokenMetadata(stream.Context())
 	if err != nil {
 		return err
 	}
@@ -87,27 +87,23 @@ func (s *contextServerStream) Context() context.Context {
 	return s.ctx
 }
 
-func contextWithAPIKeyMetadata(ctx context.Context) (context.Context, error) {
+func contextWithAccessTokenMetadata(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "metadata no encontrada")
 	}
 
-	apikey := firstMetadataValue(md, MetadataAPIKey)
-	if apikey == "" {
-		return nil, status.Error(codes.Unauthenticated, "API KEY no encontrado")
+	accessToken := firstMetadataValue(md, MetadataAccessToken)
+	if accessToken == "" {
+		return nil, status.Error(codes.Unauthenticated, "access-token no encontrado")
 	}
 
-	data, err := identitysdk.ValidateApiKeyWithCache(ctx, apikey)
-	if err != nil {
-		slog.Warn("gRPC API key validation failed", "error", err)
+	if err := identitysdk.ValidateAccessKey(ctx, accessToken); err != nil {
+		slog.Warn("gRPC access token validation failed", "error", err)
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-	if data == nil {
-		return nil, status.Error(codes.Unauthenticated, "api key session invalida")
-	}
 
-	newCtx := identitysdk.BuildApikeyContext(ctx, apikey, &data.Apikey)
+	newCtx := ctx
 
 	if empresa := firstMetadataValue(md, MetadataEmpresa); empresa != "" {
 		newCtx = identitysdk.CtxWithDomain(newCtx, empresa)

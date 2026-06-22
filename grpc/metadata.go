@@ -1,7 +1,7 @@
 package grpc
 
 const (
-	MetadataAPIKey        = "x-api-key"
+	MetadataAccessToken   = "x-access-token"
 	MetadataToken         = "authorization"
 	MetadataEmpresa       = "x-empresa"
 	MetadataUsername      = "x-username"
