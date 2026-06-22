@@ -81,7 +81,7 @@ func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogr
 	g.mu.RUnlock()
 
 	if conn != nil {
-		readyConn, err := g.ensureConnection(ctx, grpcURL, conn)
+		readyConn, err := g.ensureConnection(ctx, resourceCode, grpcURL, conn)
 		if err == nil {
 			return readyConn, nil
 		}
@@ -96,7 +96,7 @@ func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogr
 
 	if conn := g.conns[grpcURL]; conn != nil {
 		if conn.GetState() != connectivity.Shutdown {
-			readyConn, err := g.ensureConnection(ctx, grpcURL, conn)
+			readyConn, err := g.ensureConnection(ctx, resourceCode, grpcURL, conn)
 			if err == nil {
 				return readyConn, nil
 			}
@@ -108,7 +108,7 @@ func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogr
 
 		delete(g.conns, grpcURL)
 		if err := conn.Close(); err != nil {
-			slog.Warn("failed to close shutdown grpc connection", "grpc_url", grpcURL, "error", err)
+			slog.Warn("failed to close shutdown grpc connection", "empresa", identitysdk.Empresa(ctx), "resource_code", resourceCode, "grpc_url", grpcURL, "error", err)
 		}
 	}
 
@@ -128,13 +128,13 @@ func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogr
 		}),
 	)
 	if err != nil {
-		slog.Warn("failed to create grpc client", "grpc_url", grpcURL, "error", err)
+		slog.Warn("failed to create grpc client", "empresa", identitysdk.Empresa(ctx), "resource_code", resourceCode, "grpc_url", grpcURL, "error", err)
 		return nil, err
 	}
 
 	g.conns[grpcURL] = conn
 
-	return g.ensureConnection(ctx, grpcURL, conn)
+	return g.ensureConnection(ctx, resourceCode, grpcURL, conn)
 }
 
 func (g *GrpcClient) unaryContextInterceptor(
@@ -185,7 +185,7 @@ func (g *GrpcClient) outgoingContext(ctx context.Context) context.Context {
 	return metadata.AppendToOutgoingContext(ctx, pairs...)
 }
 
-func (g *GrpcClient) ensureConnection(ctx context.Context, grpcURL string, conn *gogrpc.ClientConn) (*gogrpc.ClientConn, error) {
+func (g *GrpcClient) ensureConnection(ctx context.Context, resourceCode string, grpcURL string, conn *gogrpc.ClientConn) (*gogrpc.ClientConn, error) {
 	state := conn.GetState()
 
 	if state == connectivity.Shutdown {
@@ -196,7 +196,7 @@ func (g *GrpcClient) ensureConnection(ctx context.Context, grpcURL string, conn 
 		g.mu.Unlock()
 
 		if err := conn.Close(); err != nil {
-			slog.Warn("failed to close shutdown grpc connection", "grpc_url", grpcURL, "error", err)
+			slog.Warn("failed to close shutdown grpc connection", "empresa", identitysdk.Empresa(ctx), "resource_code", resourceCode, "grpc_url", grpcURL, "error", err)
 		}
 
 		return nil, errGrpcConnShutdown
@@ -207,7 +207,7 @@ func (g *GrpcClient) ensureConnection(ctx context.Context, grpcURL string, conn 
 	}
 
 	if err := waitForReady(ctx, conn); err != nil {
-		slog.Warn("grpc connection is not ready", "grpc_url", grpcURL, "state", conn.GetState(), "error", err)
+		slog.Warn("grpc connection is not ready", "empresa", identitysdk.Empresa(ctx), "resource_code", resourceCode, "grpc_url", grpcURL, "state", conn.GetState(), "error", err)
 		return nil, err
 	}
 
@@ -286,14 +286,14 @@ func (g *GrpcClient) requestGrpcLocation(ctx context.Context, resourceCode strin
 		xreq.WithAccessToken(accessToken),
 		xreq.WithUnmarshalResponseInto(&apiResponse),
 	); err != nil {
-		slog.Warn("failed to request grpc location", "error", err)
+		slog.Warn("failed to request grpc location", "empresa", companyCode, "resource_code", resourceCode, "error", err)
 		return "", err
 	}
 
 	location := strings.TrimSpace(apiResponse.Data.Location)
 	if location == "" {
 		err := errors.New("grpc location is empty")
-		slog.Warn("invalid grpc location response", "message", apiResponse.Message)
+		slog.Warn("invalid grpc location response", "empresa", companyCode, "resource_code", resourceCode, "message", apiResponse.Message)
 		return "", err
 	}
 
