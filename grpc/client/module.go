@@ -23,13 +23,23 @@ var contratosModule = fx.Module("grpc-client-contratos",
 		fx.Private,
 	),
 	fx.Provide(
-		asistenciapb.NewTrabajadoresHorariosServiceClient,
 		contratospb.NewAsistenciaMarcadorServiceClient,
 		contratospb.NewTrabajadoresGRPCServiceClient,
+	),
+)
+
+var asistenciaModule = fx.Module("grpc-client-asistencia",
+	fx.Provide(
+		newGrpcClient("com.sfperusac.asistencia"),
+		fx.Private,
+	),
+	fx.Provide(
+		asistenciapb.NewTrabajadoresHorariosServiceClient,
 	),
 )
 
 var Module = fx.Module(
 	"grpc-client",
 	contratosModule,
+	asistenciaModule,
 )

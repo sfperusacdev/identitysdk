@@ -108,9 +108,7 @@ func contextWithAccessTokenMetadata(ctx context.Context) (context.Context, error
 	if empresa := firstMetadataValue(md, MetadataEmpresa); empresa != "" {
 		newCtx = identitysdk.CtxWithDomain(newCtx, empresa)
 	}
-	if token := firstMetadataValue(md, MetadataToken); token != "" {
-		newCtx = identitysdk.CtxWithToken(newCtx, token)
-	}
+
 	if username := firstMetadataValue(md, MetadataUsername); username != "" {
 		newCtx = identitysdk.CtxWithUsername(newCtx, username)
 	}
@@ -119,6 +117,14 @@ func contextWithAccessTokenMetadata(ctx context.Context) (context.Context, error
 	}
 	if origin := firstMetadataValue(md, MetadataRequestOrigin); origin != "" {
 		newCtx = identitysdk.CtxWithRequestOrigin(newCtx, origin)
+	}
+
+	if token := firstMetadataValue(md, MetadataToken); token != "" {
+		var err error
+		newCtx, err = identitysdk.BuildContext(newCtx, token)
+		if err != nil {
+			return nil, status.Error(codes.Unauthenticated, err.Error())
+		}
 	}
 
 	return newCtx, nil
