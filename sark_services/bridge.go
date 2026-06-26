@@ -1,21 +1,25 @@
 package sark_services
 
 import (
+	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
 	"github.com/sfperusacdev/identitysdk/sark_services/storage"
 	"github.com/sfperusacdev/identitysdk/sark_services/variables"
 )
 
-type BridgeService struct {
-	Variables *variables.VariablesService
-	Storage   *storage.StorageService
+type SarkBridgeService struct {
+	Variables  *variables.VariablesService
+	Storage    *storage.StorageService
+	Asistencia *asistencia.AsistenciaService
 }
 
-func NewBridgeService(
+func NewSarkBridgeService(
 	Variables *variables.VariablesService,
 	Storage *storage.StorageService,
-) *BridgeService {
-	return &BridgeService{
-		Variables: Variables,
-		Storage:   Storage,
+	Asistencia *asistencia.AsistenciaService,
+) *SarkBridgeService {
+	return &SarkBridgeService{
+		Variables:  Variables,
+		Storage:    Storage,
+		Asistencia: Asistencia,
 	}
 }
