@@ -17,11 +17,11 @@ const meVariablesEndpoint = `/api/v1/companies/me/properties`
 
 type MeVariablesService struct {
 	cache    *variablesCache
-	identity bridgeidentity.Provider
+	identity bridgeidentity.IdentityProvider
 }
 
 func NewMeVariablesService(
-	identity bridgeidentity.Provider,
+	identity bridgeidentity.IdentityProvider,
 ) (*MeVariablesService, error) {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
 	if err != nil {

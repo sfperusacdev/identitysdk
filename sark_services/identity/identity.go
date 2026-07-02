@@ -6,26 +6,26 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 )
 
-type Provider interface {
+type IdentityProvider interface {
 	IdentityServer() string
 	AccessToken() string
 	SessionToken(ctx context.Context) string
 }
 
-type DefaultProvider struct{}
+type DefaultIdentityProvider struct{}
 
-func NewDefaultProvider() *DefaultProvider {
-	return &DefaultProvider{}
+func NewDefaultIdentityProvider() *DefaultIdentityProvider {
+	return &DefaultIdentityProvider{}
 }
 
-func (DefaultProvider) IdentityServer() string {
+func (DefaultIdentityProvider) IdentityServer() string {
 	return identitysdk.GetIdentityServer()
 }
 
-func (DefaultProvider) AccessToken() string {
+func (DefaultIdentityProvider) AccessToken() string {
 	return identitysdk.GetAccessToken()
 }
 
-func (DefaultProvider) SessionToken(ctx context.Context) string {
+func (DefaultIdentityProvider) SessionToken(ctx context.Context) string {
 	return identitysdk.Token(ctx)
 }

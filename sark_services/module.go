@@ -11,8 +11,8 @@ import (
 var Module = fx.Module("identitysdk/sark_services",
 	fx.Provide(
 		fx.Annotate(
-			bridgeidentity.NewDefaultProvider,
-			fx.As(new(bridgeidentity.Provider)),
+			bridgeidentity.NewDefaultIdentityProvider,
+			fx.As(new(bridgeidentity.IdentityProvider)),
 		),
 		variables.NewGlobalVariablesService,
 		variables.NewMeVariablesService,

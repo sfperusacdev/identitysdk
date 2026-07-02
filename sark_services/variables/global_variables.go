@@ -17,11 +17,11 @@ const globalVariablesCompany = "____global____system____domain____"
 
 type GlobalVariablesService struct {
 	cache    *variablesCache
-	identity bridgeidentity.Provider
+	identity bridgeidentity.IdentityProvider
 }
 
 func NewGlobalVariablesService(
-	identity bridgeidentity.Provider,
+	identity bridgeidentity.IdentityProvider,
 ) (*GlobalVariablesService, error) {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
 	if err != nil {

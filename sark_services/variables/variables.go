@@ -17,13 +17,13 @@ type VariablesService struct {
 	Global   *GlobalVariablesService
 	Me       *MeVariablesService
 	cache    *variablesCache
-	identity bridgeidentity.Provider
+	identity bridgeidentity.IdentityProvider
 }
 
 func NewVariablesService(
 	global *GlobalVariablesService,
 	me *MeVariablesService,
-	identity bridgeidentity.Provider,
+	identity bridgeidentity.IdentityProvider,
 ) (*VariablesService, error) {
 	cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Minute))
 	if err != nil {
