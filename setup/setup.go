@@ -31,6 +31,7 @@ import (
 	propsprovider "github.com/sfperusacdev/identitysdk/helpers/properties/props_provider"
 	"github.com/sfperusacdev/identitysdk/helpers/scripting"
 	"github.com/sfperusacdev/identitysdk/helpers/signpdf"
+	"github.com/sfperusacdev/identitysdk/helpers/staging"
 	"github.com/sfperusacdev/identitysdk/helpers/sunat"
 	"github.com/sfperusacdev/identitysdk/helpers/workflows"
 	"github.com/sfperusacdev/identitysdk/httpapi"
@@ -606,6 +607,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			fx.Provide(s.options.externalBridgeServiceProvider),
 			// tools
 			grpcclient.Module,
+			fx.Provide(staging.NewStagingFilesArea),
 			fx.Provide(facecropper.NewFaceCropService),
 			fx.Provide(docxtopdf.NewDocxTemplateToPdfService),
 			fx.Provide(fotocheck.NewFotocheckBuilder),

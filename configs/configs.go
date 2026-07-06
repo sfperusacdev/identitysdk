@@ -17,6 +17,7 @@ type GeneralServiceConfigProvider interface {
 	Identity() string
 	IdentityAccessToken() string
 	CacheDir() string
+	StagingDir() string // area temporal para almacenar los archivos subidos
 }
 
 type DatabaseConfigProvider interface {
@@ -36,6 +37,7 @@ type GeneralServiceConfig struct {
 	IdentityValue            string         `mapstructure:"identity" yaml:"identity"`
 	IdentityAccessTokenValue string         `mapstructure:"identity_access_token" yaml:"identity_access_token"`
 	CacheDirVal              string         `mapstructure:"cache_dir" yaml:"cache_dir"`
+	StagingDirVal            string         `mapstructure:"staging_dir" yaml:"staging_dir"`
 	DatabaseEntity           DatabaseConfig `mapstructure:"database" yaml:"database"`
 }
 
@@ -75,6 +77,14 @@ func (c *GeneralServiceConfig) CacheDir() string {
 		return ".cache"
 	}
 	return strings.TrimSpace(c.CacheDirVal)
+}
+
+// CacheDir implements GeneralServiceConfigProvider.
+func (c *GeneralServiceConfig) StagingDir() string {
+	if c.StagingDirVal == "" {
+		return ".staging"
+	}
+	return strings.TrimSpace(c.StagingDirVal)
 }
 
 // IdentityAccessToken implements GeneralServiceConfigProvider.
