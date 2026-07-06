@@ -2,8 +2,8 @@ stamp-styles:
   default:
     type: text
     border_width: 0
-    background: {{.background}}
-    stamp-text: "{{.stamp_text}}\n%(ts)s"
+    background: {{printf "%q" .background}}
+    stamp-text: {{printf "%q" .stamp_text}}
     background-layout:
       x-align: mid
       margins:

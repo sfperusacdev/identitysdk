@@ -4,10 +4,11 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"os"
 	"strings"
+	"text/template"
+	"unicode"
 )
 
 //go:embed pyhanko_unsigned.yml
@@ -21,10 +22,7 @@ func RenderConfigWithoutImage(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	text = strings.TrimSpace(text)
-	if text == "" {
-		text = "%(signer)s"
-	}
+	text = buildStampText(text)
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]string{
 		"stamp_text": text,
@@ -51,10 +49,7 @@ func RenderConfigWithImage(text string, backgroundPath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	text = strings.TrimSpace(text)
-	if text == "" {
-		text = "%(signer)s"
-	}
+	text = buildStampText(text)
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]string{
 		"background": backgroundPath,
@@ -65,4 +60,20 @@ func RenderConfigWithImage(text string, backgroundPath string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func buildStampText(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		text = "%(signer)s"
+	}
+
+	text = strings.Map(func(r rune) rune {
+		if unicode.IsPrint(r) && !unicode.IsControl(r) {
+			return r
+		}
+		return -1
+	}, text)
+
+	return fmt.Sprintf("%s\n%%(ts)s", text)
 }

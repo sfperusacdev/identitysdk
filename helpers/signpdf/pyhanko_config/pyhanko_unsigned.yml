@@ -1,7 +1,7 @@
 stamp-styles:
     default:
         type: text               
-        stamp-text: "{{.stamp_text}}\n%(ts)s"      
+        stamp-text: {{printf "%q" .stamp_text}}
         background-layout:
           x-align: mid
           margins:
