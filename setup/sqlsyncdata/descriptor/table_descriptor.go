@@ -17,6 +17,9 @@ type TableDescriptor struct {
 	// Primary key prefixes that are exempt from the prefix validation rule %s
 	SkipPKPrefixCheckFilter []string
 
+	// Optional primary keys used only for read-only synchronized tables.
+	PrimaryKeys []string
+
 	// Number of days back from now to start synchronization
 	// Only used when FullSync is false
 	// If the value is 0, the entire historical dataset is synchronized
@@ -66,6 +69,20 @@ func (tc TableColumn) IsPrimaryKey() bool {
 	return strings.ToLower(strings.TrimSpace(tc.Contype)) == primaryKeyKeyword
 }
 
+func (td TableDescriptor) PrimaryKeyColumns(tableColumns []TableColumn) []string {
+	if len(td.PrimaryKeys) > 0 {
+		return normalizeNames(td.PrimaryKeys)
+	}
+
+	var primaryKeys []string
+	for _, col := range tableColumns {
+		if col.IsPrimaryKey() {
+			primaryKeys = append(primaryKeys, strings.ToLower(col.ColumnName))
+		}
+	}
+	return primaryKeys
+}
+
 func (tc TableDescriptor) IsReadyOnly(tableColumns []TableColumn) bool {
 	if tc.ReadOnly {
 		return true
@@ -86,7 +103,7 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 	allowedColumns := append([]string{}, td.Columns...)
 	allowedColumns = append(allowedColumns, defaultColumnNames...)
 
-	var primaryKeys []string
+	primaryKeys := td.PrimaryKeyColumns(tableColumns)
 	columnCount := 0
 
 	var hasSyncedAt bool
@@ -94,7 +111,8 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 
 	for _, col := range tableColumns {
 		columnName := strings.ToLower(col.ColumnName)
-		if !col.IsPrimaryKey() && !slices.Contains(allowedColumns, columnName) {
+		isPrimaryKey := slices.Contains(primaryKeys, columnName)
+		if !isPrimaryKey && !slices.Contains(allowedColumns, columnName) {
 			continue
 		}
 
@@ -121,8 +139,7 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 			builder.WriteString(col.ColumnNotNull)
 		}
 
-		if col.IsPrimaryKey() {
-			primaryKeys = append(primaryKeys, columnName)
+		if isPrimaryKey {
 			continue
 		}
 
@@ -172,17 +189,19 @@ func (td TableDescriptor) BuildSelectStatement(tableColumns []TableColumn, domai
 	allowedColumns = append(allowedColumns, defaultColumnNames...)
 
 	columnCount := 0
-	var primaryKeys []string
+	primaryKeys := td.PrimaryKeyColumns(tableColumns)
+	var scopedPrimaryKeys []string
 	for _, col := range tableColumns {
 		columnName := strings.ToLower(col.ColumnName)
-		if !col.IsPrimaryKey() &&
+		isPrimaryKey := slices.Contains(primaryKeys, columnName)
+		if !isPrimaryKey &&
 			!slices.Contains(allowedColumns, columnName) {
 			continue
 		}
 
-		if col.IsPrimaryKey() &&
+		if isPrimaryKey &&
 			!slices.Contains(td.SkipPKPrefixCheckFilter, columnName) {
-			primaryKeys = append(primaryKeys, columnName)
+			scopedPrimaryKeys = append(scopedPrimaryKeys, columnName)
 		}
 
 		if columnCount > 0 {
@@ -197,8 +216,8 @@ func (td TableDescriptor) BuildSelectStatement(tableColumns []TableColumn, domai
 	var where []string
 	var whereArgs = []any{}
 
-	if len(primaryKeys) > 0 {
-		for _, p := range primaryKeys {
+	if len(scopedPrimaryKeys) > 0 {
+		for _, p := range scopedPrimaryKeys {
 			where = append(where, fmt.Sprintf("%s LIKE ?", p))
 			whereArgs = append(whereArgs, fmt.Sprintf("%s.%%", domain))
 		}
@@ -215,6 +234,18 @@ func (td TableDescriptor) BuildSelectStatement(tableColumns []TableColumn, domai
 	}
 
 	return qry, whereArgs
+}
+
+func normalizeNames(names []string) []string {
+	result := make([]string, 0, len(names))
+	for _, name := range names {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" || slices.Contains(result, name) {
+			continue
+		}
+		result = append(result, name)
+	}
+	return result
 }
 
 func (td TableDescriptor) ValidateScope(

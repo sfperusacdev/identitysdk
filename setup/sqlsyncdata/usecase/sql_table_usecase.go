@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 
 	"github.com/sfperusacdev/identitysdk/setup/sqlsyncdata/descriptor"
 	"github.com/sfperusacdev/identitysdk/setup/sqlsyncdata/repos"
@@ -60,6 +61,15 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 			return nil, err
 		}
 		var isReadyOnly = desc.IsReadyOnly(columns)
+		if len(desc.PrimaryKeys) > 0 && !isReadyOnly {
+			return nil, errs.BadRequestf(
+				"primary keys configuradas solo se permiten en tablas de solo lectura: %s",
+				table,
+			)
+		}
+		if err := validatePrimaryKeysExist(table, desc.PrimaryKeyColumns(columns), columns); err != nil {
+			return nil, err
+		}
 		tablescript = append(tablescript, TableInfoResponse{
 			TableName:     table,
 			Script:        desc.BuildCreateTableStatement(columns),
@@ -70,4 +80,24 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 		})
 	}
 	return tablescript, nil
+}
+
+func validatePrimaryKeysExist(tableName string, primaryKeys []string, columns []descriptor.TableColumn) error {
+	for _, pk := range primaryKeys {
+		found := false
+		for _, col := range columns {
+			if strings.EqualFold(col.ColumnName, pk) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errs.BadRequestf(
+				"primary key configurada no existe en la tabla %s: %s",
+				tableName,
+				pk,
+			)
+		}
+	}
+	return nil
 }

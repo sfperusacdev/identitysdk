@@ -115,6 +115,26 @@ func TestBuildCreateTableStatement_PrimaryKeysAlwaysIncluded(t *testing.T) {
 	}
 }
 
+func TestBuildCreateTableStatement_ConfiguredPrimaryKeys(t *testing.T) {
+	td := TableDescriptor{
+		Table:       "readonly_items",
+		Columns:     []string{"name"},
+		PrimaryKeys: []string{"code"},
+	}
+
+	cols := []TableColumn{
+		{ColumnName: "code", ColumnType: "text", ColumnNotNull: "not null"},
+		{ColumnName: "name", ColumnType: "text", ColumnNotNull: "null"},
+		{ColumnName: "noise", ColumnType: "text", ColumnNotNull: "null"},
+	}
+
+	sql := td.BuildCreateTableStatement(cols)
+
+	if sql != "CREATE TABLE IF NOT EXISTS readonly_items(code text not null, name text, PRIMARY KEY(code))" {
+		t.Fatalf("sql mismatch: %s", sql)
+	}
+}
+
 func TestBuildCreateTableStatement(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -297,6 +317,25 @@ func TestBuildSelectStatement(t *testing.T) {
 			wantSQL: "SELECT tenant_id, name FROM orders WHERE tenant_id LIKE ?",
 			wantArgs: []any{
 				"acme.%",
+			},
+		},
+		{
+			name: "configured primary key",
+			td: TableDescriptor{
+				Table:       "readonly_items",
+				Columns:     []string{"name"},
+				PrimaryKeys: []string{"code"},
+			},
+			cols: []TableColumn{
+				{ColumnName: "code"},
+				{ColumnName: "name"},
+			},
+			domain:  "acme",
+			syncAt:  20,
+			wantSQL: "SELECT code, name FROM readonly_items WHERE code LIKE ? AND sync_at > ?",
+			wantArgs: []any{
+				"acme.%",
+				int64(20),
 			},
 		},
 	}
