@@ -9,6 +9,8 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/gosimple/unidecode"
 )
 
 //go:embed pyhanko_unsigned.yml
@@ -34,7 +36,27 @@ func RenderConfigWithoutImage(text string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func SanitizeYAMLText(s string) string {
+	// Convierte Unicode a ASCII
+	s = unidecode.Unidecode(s)
+
+	// Elimina caracteres de control que YAML no acepta
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n', r == '\r', r == '\t':
+			return r
+		case r < 0x20, r == 0x7F, (r >= 0x80 && r <= 0x9F):
+			return -1
+		default:
+			return r
+		}
+	}, s)
+
+	return s
+}
+
 func RenderConfigWithImage(text string, backgroundPath string) ([]byte, error) {
+	text = SanitizeYAMLText(text)
 	info, err := os.Stat(backgroundPath)
 	if err != nil {
 		slog.Error("failed to stat background path", slog.String("path", backgroundPath), slog.Any("error", err))

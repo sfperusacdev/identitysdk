@@ -63,17 +63,29 @@ func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req Tabl
 		return nil, err
 	}
 
-	primaryKeys, err := s.repository.GetTablePrimaryKeys(ctx, req.TableName)
-	if err != nil {
-		return nil, err
-	}
-
 	descriptor, err := s.getDescriptor(req.TableName)
 	if err != nil {
 		return nil, err
 	}
 
 	var isReadyOnly = descriptor.IsReadyOnly(tableColumns)
+	if len(descriptor.PrimaryKeys) > 0 && !isReadyOnly {
+		return nil, errs.BadRequestf(
+			"primary keys configuradas solo se permiten en tablas de solo lectura: %s",
+			req.TableName,
+		)
+	}
+
+	primaryKeys := descriptor.PrimaryKeyColumns(tableColumns)
+	if len(descriptor.PrimaryKeys) == 0 {
+		primaryKeys, err = s.repository.GetTablePrimaryKeys(ctx, req.TableName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := validatePrimaryKeysExist(req.TableName, primaryKeys, tableColumns); err != nil {
+		return nil, err
+	}
 
 	if isReadyOnly && len(req.Payload) > 0 {
 		return nil, errs.BadRequestf(

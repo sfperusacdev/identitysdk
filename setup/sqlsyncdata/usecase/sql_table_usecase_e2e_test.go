@@ -156,6 +156,42 @@ func TestSQLTableUsecase_SyncTable_ReadOnlyAllowsPull(t *testing.T) {
 	require.Equal(t, "acme.server", res.Payload[0]["id"])
 }
 
+func TestSQLTableUsecase_SyncTable_ReadOnlyUsesConfiguredPrimaryKeys(t *testing.T) {
+	ctx := context.Background()
+	storage := testdb.NewPostgresStorage(t)
+	createReadOnlyItemsTable(t, ctx, storage, "readonly_configured_pk_items")
+	insertSyncItem(t, ctx, storage, "readonly_configured_pk_items", "acme.server", "server row", 200)
+
+	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
+		{Table: "readonly_configured_pk_items", Columns: []string{"name"}, ReadOnly: true, PrimaryKeys: []string{"id"}},
+	})
+
+	res, err := tableUsecase.SyncTable(ctx, "acme", usecase.TableSyncRequest{
+		TableName: "readonly_configured_pk_items",
+		SyncAt:    100,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"id"}, res.PrimaryKes)
+	require.Len(t, res.Payload, 1)
+	require.Equal(t, "acme.server", res.Payload[0]["id"])
+}
+
+func TestSQLTableUsecase_SyncTable_RejectsConfiguredPrimaryKeysOnWritableTable(t *testing.T) {
+	ctx := context.Background()
+	storage := testdb.NewPostgresStorage(t)
+	createSyncItemsTable(t, ctx, storage, "writable_configured_pk_items")
+
+	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
+		{Table: "writable_configured_pk_items", Columns: []string{"name"}, PrimaryKeys: []string{"id"}},
+	})
+
+	_, err := tableUsecase.SyncTable(ctx, "acme", usecase.TableSyncRequest{
+		TableName: "writable_configured_pk_items",
+		SyncAt:    100,
+	})
+	require.Error(t, err)
+}
+
 func TestSQLTableUsecase_SyncTable_RejectsPayloadOutsideDomain(t *testing.T) {
 	ctx := context.Background()
 	storage := testdb.NewPostgresStorage(t)
@@ -207,6 +243,19 @@ func createSyncItemsTable(t *testing.T, ctx context.Context, storage connection.
 	err := storage.Conn(ctx).Exec(fmt.Sprintf(`
 		CREATE TABLE %s (
 			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			sync_at BIGINT NOT NULL
+		)
+	`, table)).Error
+	require.NoError(t, err)
+}
+
+func createReadOnlyItemsTable(t *testing.T, ctx context.Context, storage connection.StorageManager, table string) {
+	t.Helper()
+
+	err := storage.Conn(ctx).Exec(fmt.Sprintf(`
+		CREATE TABLE %s (
+			id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			sync_at BIGINT NOT NULL
 		)
