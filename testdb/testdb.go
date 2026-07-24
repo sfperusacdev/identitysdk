@@ -2,6 +2,8 @@ package testdb
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -12,6 +14,8 @@ import (
 
 	"github.com/pressly/goose/v3"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
+	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
+	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -40,7 +44,7 @@ func SetMigrationFS(fsys fs.FS) {
 	migrationFS = fsys
 }
 
-func NewPostgresStorage(t *testing.T, additionalFileSystems ...fs.FS) connection.StorageManager {
+func NewPostgresStorage(t *testing.T) connection.StorageManager {
 	t.Helper()
 
 	postgresOnce.Do(func() {
@@ -127,12 +131,71 @@ func runMigrations(storage connection.StorageManager) error {
 		return err
 	}
 	if migrationFS != nil {
+		viewFiles, err := loadViewFiles(migrationFS)
+		if err != nil {
+			return err
+		}
+		if err := dropViews(db, viewFiles); err != nil {
+			return err
+		}
 		if err := goose.UpContext(ctx, db, "migrations"); err != nil {
 			slog.Error(fmt.Sprintf("Database %s failed", "up"), "error", err)
 			return err
 		}
+		if err := recoverViews(db, viewFiles); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+type dbViewFile struct {
+	name  string
+	sql   string
+	views []string
+}
+
+func loadViewFiles(fsys fs.FS) ([]dbViewFile, error) {
+	files, err := sqlreader.LoadSQLFiles(fsys, "migrations/_views")
+	if errors.Is(err, fs.ErrNotExist) {
+		return []dbViewFile{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dbViewFile, 0, len(files))
+	for _, file := range files {
+		if file.Content == "" {
+			continue
+		}
+		result = append(result, dbViewFile{
+			name:  file.Name,
+			sql:   file.Content,
+			views: sqlviews.FindViewNames(file.Content),
+		})
+	}
+	return result, nil
+}
+
+func dropViews(db *sql.DB, files []dbViewFile) error {
+	for _, file := range files {
+		for _, view := range file.views {
+			if _, err := db.Exec("DROP VIEW IF EXISTS " + view); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func recoverViews(db *sql.DB, files []dbViewFile) error {
+	for _, file := range files {
+		if _, err := db.Exec(file.sql); err != nil {
+			return fmt.Errorf("failed to execute view file %s: %w", file.name, err)
+		}
+	}
 	return nil
 }
 
@@ -142,9 +205,18 @@ func dropPublicTables(t *testing.T, storage connection.StorageManager) {
 	err := storage.Conn(context.Background()).Exec(`
 		DO $$
 		DECLARE
+			view_record RECORD;
 			table_record RECORD;
 			schema_record RECORD;
 		BEGIN
+			FOR view_record IN (
+				SELECT schemaname, viewname
+				FROM pg_views
+				WHERE schemaname = 'public'
+			) LOOP
+				EXECUTE 'DROP VIEW IF EXISTS ' || quote_ident(view_record.schemaname) || '.' || quote_ident(view_record.viewname) || ' CASCADE';
+			END LOOP;
+
 			FOR table_record IN (
 				SELECT tablename
 				FROM pg_tables
