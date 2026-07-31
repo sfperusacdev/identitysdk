@@ -274,3 +274,88 @@ func TestSyncBatch_UpdateReceivesOldAndNew(t *testing.T) {
 		t.Fatalf("unexpected new value: %+v", newY)
 	}
 }
+
+func TestSync_DoesNotReuseLocalMatch(t *testing.T) {
+	external := []Ext{{ID: "1", Name: "first"}, {ID: "1", Name: "second"}}
+	local := []Loc{{ID: "1", Name: "old"}}
+	inserted := 0
+	updated := 0
+
+	result, err := datasync.Sync(context.Background(), external, local, datasync.SyncStrategy[Ext, Loc]{
+		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
+		Insert: func(context.Context, Loc) error {
+			inserted++
+			return nil
+		},
+		Update: func(context.Context, Loc, Loc) error {
+			updated++
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Inserted != 1 || inserted != 1 {
+		t.Fatalf("expected one insert, result=%+v callback=%d", result, inserted)
+	}
+	if result.Updated != 1 || updated != 1 {
+		t.Fatalf("expected one update, result=%+v callback=%d", result, updated)
+	}
+}
+
+func TestSyncBatch_DoesNotReuseLocalMatch(t *testing.T) {
+	external := []Ext{{ID: "1", Name: "first"}, {ID: "1", Name: "second"}}
+	local := []Loc{{ID: "1", Name: "old"}}
+	var inserted []Loc
+	var updatedNew []Loc
+
+	result, err := datasync.SyncBatch(context.Background(), external, local, datasync.SyncBatchStrategy[Ext, Loc]{
+		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
+		InsertBatch: func(_ context.Context, values []Loc) error {
+			inserted = values
+			return nil
+		},
+		UpdateBatch: func(_ context.Context, _, values []Loc) error {
+			updatedNew = values
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Inserted != 1 || len(inserted) != 1 {
+		t.Fatalf("expected one insert, result=%+v values=%v", result, inserted)
+	}
+	if result.Updated != 1 || len(updatedNew) != 1 {
+		t.Fatalf("expected one update, result=%+v values=%v", result, updatedNew)
+	}
+}
+
+func TestSyncBatch_CountsUnchangedWithPartialStrategy(t *testing.T) {
+	external := []Ext{{ID: "1", Name: "same"}, {ID: "2", Name: "new"}}
+	local := []Loc{{ID: "1", Name: "same"}}
+	inserted := 0
+
+	result, err := datasync.SyncBatch(context.Background(), external, local, datasync.SyncBatchStrategy[Ext, Loc]{
+		Equals: func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:    func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
+		InsertBatch: func(_ context.Context, values []Loc) error {
+			inserted = len(values)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Inserted != 1 || inserted != 1 {
+		t.Fatalf("expected one insert, result=%+v callback=%d", result, inserted)
+	}
+	if result.Unchanged != 1 {
+		t.Fatalf("expected one unchanged item, result=%+v", result)
+	}
+}

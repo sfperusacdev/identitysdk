@@ -42,6 +42,9 @@ func Sync[X any, Y any](
 		var oldY Y
 
 		for i, loc := range local {
+			if used[i] {
+				continue
+			}
 			if strategy.Equals(ext, loc) {
 				matched = i
 				oldY = loc
@@ -119,6 +122,9 @@ func SyncBatch[X any, Y any](
 		var oldY Y
 
 		for i, loc := range local {
+			if used[i] {
+				continue
+			}
 			if strategy.Equals(ext, loc) {
 				matched = i
 				oldY = loc
@@ -154,6 +160,8 @@ func SyncBatch[X any, Y any](
 			return result, err
 		}
 		result.Updated = len(updateNew)
+	} else if strategy.UpdateBatch == nil {
+		result.Unchanged = len(updateNew)
 	}
 
 	if len(deleteItems) > 0 && strategy.DeleteBatch != nil {
@@ -161,10 +169,6 @@ func SyncBatch[X any, Y any](
 			return result, err
 		}
 		result.Deleted = len(deleteItems)
-	}
-
-	if strategy.InsertBatch == nil && strategy.UpdateBatch == nil && strategy.DeleteBatch == nil {
-		result.Unchanged = len(external)
 	}
 
 	return result, nil
