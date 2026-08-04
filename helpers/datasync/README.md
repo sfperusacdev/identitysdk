@@ -7,8 +7,11 @@ La comparacion se define mediante dos funciones:
 
 - `Equals(ext, loc)`: determina si un elemento externo corresponde a uno local.
 - `Map(ext)`: convierte un elemento externo al tipo local.
+- `Changed(old, new)`: opcional; determina si una coincidencia debe actualizarse.
 
 `Equals` y `Map` son obligatorias. Las funciones de escritura son opcionales.
+Cuando `Changed` no esta configurada, toda coincidencia se envia a `Update` o
+`UpdateBatch`.
 
 ## Regla de comparacion
 
@@ -27,14 +30,17 @@ ya fue usado no puede volver a coincidir con otro elemento externo.
 
 El contenido de `Map(ext)` se usa como el nuevo valor local, pero no decide si
 existe una coincidencia. Por ejemplo, si el ID coincide pero cambia `Name`, se
-ejecuta `Update`; el paquete no determina por si mismo si el cambio es
-relevante.
+ejecuta `Update` si `Changed` no esta configurada. Cuando `Changed` esta
+configurada, recibe el valor local anterior y el valor nuevo mapeado; si devuelve
+`true`, se ejecuta el update, y si devuelve `false`, la coincidencia se considera
+`Unchanged`.
 
 ## Cuando se ejecuta cada operacion
 
 | Situacion | Callback | Valores recibidos | Contador |
 | --- | --- | --- | --- |
-| Existe una coincidencia local | `Update` / `UpdateBatch` | Local anterior y valor nuevo | `Updated` |
+| Existe una coincidencia local y `Changed` devuelve `true` (o no esta configurada) | `Update` / `UpdateBatch` | Local anterior y valor nuevo | `Updated` |
+| Existe una coincidencia local y `Changed` devuelve `false` | Ninguno | - | `Unchanged` |
 | Existe una coincidencia local, pero no hay callback de update | Ninguno | - | `Unchanged` |
 | No existe coincidencia local | `Insert` / `InsertBatch` | Valor nuevo mapeado | `Inserted` |
 | Un elemento local no fue usado por ningun externo | `Delete` / `DeleteBatch` | Valor local anterior | `Deleted` |
@@ -47,7 +53,8 @@ por cada externo:
     nuevo = Map(externo)
 
     si existe un local no usado donde Equals(externo, local):
-        si existe Update: ejecutar Update(local, nuevo)
+        si Changed existe y devuelve false: contar Unchanged
+        si no, si existe Update: ejecutar Update(local, nuevo)
         si no: contar Unchanged
     si no:
         si existe Insert: ejecutar Insert(nuevo)
@@ -56,10 +63,16 @@ por cada local no usado:
     si existe Delete: ejecutar Delete(local)
 ```
 
-El callback `Update` se ejecuta para toda coincidencia, incluso si los campos
-del valor nuevo son iguales a los del valor anterior. Si se quieren evitar
-updates innecesarios, esa decision debe hacerse dentro de `Equals` o dentro del
-callback de update.
+Si se quieren evitar updates innecesarios, se puede configurar `Changed`:
+
+```go
+Changed: func(old Local, new Local) bool {
+    return old.Name != new.Name
+},
+```
+
+Una coincidencia que `Changed` descarta sigue considerandose usada, por lo que no
+se elimina mediante `Delete` o `DeleteBatch`.
 
 Ejemplo de decision:
 
@@ -79,7 +92,8 @@ ID 3 no fue usado -> Delete(ID 3 local)
 - `Inserted`: elementos externos sin coincidencia que fueron insertados.
 - `Updated`: elementos con coincidencia cuyo callback de actualizacion se ejecuto.
 - `Deleted`: elementos locales sin coincidencia que fueron eliminados.
-- `Unchanged`: elementos con coincidencia cuyo callback de actualizacion no esta configurado.
+- `Unchanged`: elementos con coincidencia que `Changed` descarto o cuyo callback
+  de actualizacion no esta configurado.
 
 Si una operacion no tiene callback, se omite y no se cuenta como insertada,
 actualizada o eliminada. Un elemento coincidente sin callback de actualizacion

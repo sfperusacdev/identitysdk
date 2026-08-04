@@ -198,6 +198,68 @@ func TestSyncBatchNoChanges(t *testing.T) {
 	}
 }
 
+func TestSyncChangedSkipsUnchangedMatches(t *testing.T) {
+	local := []Loc{{ID: "1", Name: "same"}, {ID: "2", Name: "old"}}
+	updates := 0
+	deletes := 0
+
+	result, err := datasync.Sync(context.Background(), []Ext{
+		{ID: "1", Name: "same"},
+		{ID: "2", Name: "new"},
+	}, local, datasync.SyncStrategy[Ext, Loc]{
+		Equals:  func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:     func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
+		Changed: func(old Loc, new Loc) bool { return old.Name != new.Name },
+		Update: func(context.Context, Loc, Loc) error {
+			updates++
+			return nil
+		},
+		Delete: func(context.Context, Loc) error {
+			deletes++
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Updated != 1 || updates != 1 || result.Unchanged != 1 {
+		t.Fatalf("unexpected update counts: result=%+v updates=%d", result, updates)
+	}
+	if result.Deleted != 0 || deletes != 0 {
+		t.Fatalf("unchanged match was treated as deleted: result=%+v deletes=%d", result, deletes)
+	}
+}
+
+func TestSyncBatchChangedFiltersUpdates(t *testing.T) {
+	var oldValues []Loc
+	var newValues []Loc
+
+	result, err := datasync.SyncBatch(context.Background(), []Ext{
+		{ID: "1", Name: "same"},
+		{ID: "2", Name: "new"},
+	}, []Loc{{ID: "1", Name: "same"}, {ID: "2", Name: "old"}}, datasync.SyncBatchStrategy[Ext, Loc]{
+		Equals:  func(e Ext, l Loc) bool { return e.ID == l.ID },
+		Map:     func(e Ext) Loc { return Loc{ID: e.ID, Name: e.Name} },
+		Changed: func(old Loc, new Loc) bool { return old.Name != new.Name },
+		UpdateBatch: func(_ context.Context, old []Loc, new []Loc) error {
+			oldValues = old
+			newValues = new
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Updated != 1 || len(oldValues) != 1 || len(newValues) != 1 {
+		t.Fatalf("unexpected batch update counts: result=%+v old=%v new=%v", result, oldValues, newValues)
+	}
+	if oldValues[0].ID != "2" || newValues[0].Name != "new" || result.Unchanged != 1 {
+		t.Fatalf("unexpected batch values: result=%+v old=%v new=%v", result, oldValues, newValues)
+	}
+}
+
 func TestSync_UpdateReceivesOldAndNew(t *testing.T) {
 	ctx := context.Background()
 

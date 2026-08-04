@@ -13,11 +13,12 @@ type SyncResult struct {
 }
 
 type SyncStrategy[X any, Y any] struct {
-	Equals func(ext X, loc Y) bool
-	Map    func(ext X) Y
-	Insert func(ctx context.Context, new Y) error
-	Update func(ctx context.Context, old Y, new Y) error
-	Delete func(ctx context.Context, old Y) error
+	Equals  func(ext X, loc Y) bool
+	Map     func(ext X) Y
+	Changed func(old Y, new Y) bool
+	Insert  func(ctx context.Context, new Y) error
+	Update  func(ctx context.Context, old Y, new Y) error
+	Delete  func(ctx context.Context, old Y) error
 }
 
 func Sync[X any, Y any](
@@ -53,6 +54,12 @@ func Sync[X any, Y any](
 		}
 
 		if matched >= 0 {
+			used[matched] = true
+			if strategy.Changed != nil && !strategy.Changed(oldY, newY) {
+				result.Unchanged++
+				continue
+			}
+
 			if strategy.Update != nil {
 				if err := strategy.Update(ctx, oldY, newY); err != nil {
 					return result, err
@@ -61,7 +68,6 @@ func Sync[X any, Y any](
 			} else {
 				result.Unchanged++
 			}
-			used[matched] = true
 			continue
 		}
 
@@ -91,6 +97,7 @@ func Sync[X any, Y any](
 type SyncBatchStrategy[X any, Y any] struct {
 	Equals      func(ext X, loc Y) bool
 	Map         func(ext X) Y
+	Changed     func(old Y, new Y) bool
 	InsertBatch func(ctx context.Context, newYs []Y) error
 	UpdateBatch func(ctx context.Context, oldYs []Y, newYs []Y) error
 	DeleteBatch func(ctx context.Context, oldYs []Y) error
@@ -133,9 +140,14 @@ func SyncBatch[X any, Y any](
 		}
 
 		if matched >= 0 {
+			used[matched] = true
+			if strategy.Changed != nil && !strategy.Changed(oldY, newY) {
+				result.Unchanged++
+				continue
+			}
+
 			updateOld = append(updateOld, oldY)
 			updateNew = append(updateNew, newY)
-			used[matched] = true
 			continue
 		}
 
