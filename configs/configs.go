@@ -12,6 +12,7 @@ import (
 type ConfigPath string
 
 type GeneralServiceConfigProvider interface {
+	ServiceID() string
 	ListenAddress() string
 	GRPCAddress() string
 	Identity() string
@@ -52,6 +53,17 @@ type DatabaseConfig struct {
 
 var _ GeneralServiceConfigProvider = (*GeneralServiceConfig)(nil)
 var _ DatabaseConfigProvider = (*GeneralServiceConfig)(nil)
+
+var service_id string
+
+func SetServiceId(values string) {
+	service_id = values
+}
+
+// ListenAddress implements GeneralServiceConfigProvider.
+func (c *GeneralServiceConfig) ServiceID() string {
+	return service_id
+}
 
 // ListenAddress implements GeneralServiceConfigProvider.
 func (c *GeneralServiceConfig) ListenAddress() string {

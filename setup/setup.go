@@ -137,6 +137,7 @@ func WithDetails(serviceID, description string) ServiceOption {
 			Name:        strings.TrimSpace(serviceID),
 			Description: strings.TrimSpace(description),
 		}
+		configs.SetServiceId(strings.TrimSpace(serviceID))
 	}
 }
 

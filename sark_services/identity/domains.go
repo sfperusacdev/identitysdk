@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/configs"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
 type IdentityService struct {
+	conf     configs.GeneralServiceConfigProvider
 	identity IdentityProvider
 }
 
-func NewIdentityService(identity IdentityProvider) *IdentityService {
-	return &IdentityService{identity: identity}
+func NewIdentityService(conf configs.GeneralServiceConfigProvider, identity IdentityProvider) *IdentityService {
+	return &IdentityService{conf: conf, identity: identity}
 }
 
 func (s *IdentityService) GetDominios(ctx context.Context) ([]string, error) {
@@ -26,6 +28,23 @@ func (s *IdentityService) GetDominios(ctx context.Context) ([]string, error) {
 		s.identity.IdentityServer(),
 		"/v1/get-list-empresas",
 		xreq.WithUnmarshalResponseInto(&apiresponse),
+	); err != nil {
+		return nil, err
+	}
+	return apiresponse.Data, nil
+}
+
+func (s *IdentityService) GetServiceDominios(ctx context.Context) ([]string, error) {
+	var apiresponse struct {
+		Message string   `json:"message"`
+		Data    []string `json:"data"`
+	}
+
+	if err := xreq.MakeRequest(ctx,
+		s.identity.IdentityServer(),
+		"/v1/get-list-empresas",
+		xreq.WithUnmarshalResponseInto(&apiresponse),
+		xreq.WithQueryParam("resource_code", s.conf.ServiceID()),
 	); err != nil {
 		return nil, err
 	}
