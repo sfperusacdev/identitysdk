@@ -2,7 +2,6 @@ package identity
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
 	"github.com/sfperusacdev/identitysdk/xreq"
+	"github.com/user0608/goones/errs"
 )
 
 type IdentityService struct {
@@ -86,6 +86,18 @@ type EmpresaDto struct {
 	WriteBy        string        `json:"write_by"`
 }
 
+func (e *EmpresaDto) Tz() (*time.Location, error) {
+	e.Zona = strings.TrimSpace(e.Zona)
+	if e.Zona == "" {
+		return nil, errs.InternalErrorDirect("zona horaria no definida para este dominio")
+	}
+	location, err := time.LoadLocation(e.Zona)
+	if err != nil {
+		return nil, err
+	}
+	return location, nil
+}
+
 // GetEmpresas retrieves the list of companies from the identity service.
 // Requires a valid access token for authentication.
 func (s *IdentityService) GetEmpresas(ctx context.Context) ([]EmpresaDto, error) {
@@ -125,12 +137,16 @@ func (s *IdentityService) GetEmpresa(ctx context.Context, domain string) (*Empre
 	); err != nil {
 		return nil, err
 	}
-	if apiresponse.Data != nil {
-		for j := range apiresponse.Data.Sucursales {
-			apiresponse.Data.Sucursales[j].Code =
-				identitysdk.RemovePrefix(apiresponse.Data.Sucursales[j].Code)
-		}
+
+	if apiresponse.Data == nil {
+		return nil, errs.NotFoundDirect("dominio no encontado")
 	}
+
+	for j := range apiresponse.Data.Sucursales {
+		apiresponse.Data.Sucursales[j].Code =
+			identitysdk.RemovePrefix(apiresponse.Data.Sucursales[j].Code)
+	}
+
 	return apiresponse.Data, nil
 }
 
@@ -139,13 +155,5 @@ func (s *IdentityService) Tz(ctx context.Context, domain string) (*time.Location
 	if err != nil {
 		return nil, err
 	}
-	empresa.Zona = strings.TrimSpace(empresa.Zona)
-	if empresa.Zona == "" {
-		return nil, errors.New("zona horaria no definida para este dominio")
-	}
-	location, err := time.LoadLocation(empresa.Zona)
-	if err != nil {
-		return nil, err
-	}
-	return location, nil
+	return empresa.Tz()
 }
