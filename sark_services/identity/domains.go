@@ -2,7 +2,9 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sfperusacdev/identitysdk"
@@ -130,4 +132,20 @@ func (s *IdentityService) GetEmpresa(ctx context.Context, domain string) (*Empre
 		}
 	}
 	return apiresponse.Data, nil
+}
+
+func (s *IdentityService) Tz(ctx context.Context, domain string) (*time.Location, error) {
+	empresa, err := s.GetEmpresa(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+	empresa.Zona = strings.TrimSpace(empresa.Zona)
+	if empresa.Zona == "" {
+		return nil, errors.New("zona horaria no definida para este dominio")
+	}
+	location, err := time.LoadLocation(empresa.Zona)
+	if err != nil {
+		return nil, err
+	}
+	return location, nil
 }
