@@ -51,6 +51,7 @@ type queryServiceURLResponse struct {
 	} `json:"data"`
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetServiceURL(ctx context.Context, companyCode string, resourceCode string) (string, error) {
 	var queryParams = url.Values{}
 	queryParams.Set("company_code", companyCode)
@@ -113,42 +114,52 @@ const (
 	mensajeria_service   = "com.sfperusac.mensajeria"
 )
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetAlmacenServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_ALMACEN, almacen_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetSireServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_SIRE, sfsire_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetAsistenciaServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_ASISTENCIA, asistencia_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetSyncdataServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_SYNCDATA, syncdata_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetContratosServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_CONTRATOS, contratos_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetTareoServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_TAREO, tareoapp_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetGeneralServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_GENERAL, general_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetWhatsAppApiServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_WHATSAPP_API, whatsapp_api_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func GetMensajeriaServiceURL(ctx context.Context, companyCode string) (string, error) {
 	return overrideOrFetch(ctx, companyCode, OVR_MENSAJERIA, mensajeria_service)
 }
 
+// Deprecated: se debe utilizar SarkBridgeService.
 func Tz(ctx context.Context) (*time.Location, error) {
 	claims, ok := JwtClaims(ctx)
 	if !ok {

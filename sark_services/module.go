@@ -2,6 +2,7 @@ package sark_services
 
 import (
 	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
+	"github.com/sfperusacdev/identitysdk/sark_services/global"
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/sark_services/storage"
 	"github.com/sfperusacdev/identitysdk/sark_services/variables"
@@ -10,16 +11,14 @@ import (
 
 var Module = fx.Module("identitysdk/sark_services",
 	fx.Provide(
-		fx.Annotate(
-			bridgeidentity.NewDefaultIdentityProvider,
-			fx.As(new(bridgeidentity.IdentityProvider)),
-		),
+		bridgeidentity.NewIdentityProvider,
 		bridgeidentity.NewIdentityService,
 		variables.NewGlobalVariablesService,
 		variables.NewMeVariablesService,
 		variables.NewVariablesService,
 		storage.NewStorageService,
 		asistencia.NewAsistenciaService,
+		global.NewGlobalService,
 		NewSarkBridgeService,
 	),
 )

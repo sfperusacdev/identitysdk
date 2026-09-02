@@ -26,6 +26,7 @@ type testConfig struct {
 	stagingDir string
 }
 
+func (c *testConfig) ServiceID() string           { return "" }
 func (c *testConfig) ListenAddress() string       { return "" }
 func (c *testConfig) GRPCAddress() string         { return "" }
 func (c *testConfig) Identity() string            { return "" }
