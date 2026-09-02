@@ -131,7 +131,7 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 		builder.WriteString(columnName)
 		builder.WriteByte(' ')
 
-		columnType := normalizeColumnType(col.ColumnType)
+		columnType := NormalizeColumnType(col.ColumnType)
 		builder.WriteString(columnType)
 
 		if strings.TrimSpace(col.ColumnNotNull) != "null" {
@@ -169,7 +169,7 @@ func (td TableDescriptor) isReadOnly() {
 
 }
 
-func normalizeColumnType(columnType string) string {
+func NormalizeColumnType(columnType string) string {
 	switch {
 	case strings.HasPrefix(columnType, "character varying"):
 		return "TEXT"

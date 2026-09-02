@@ -49,6 +49,31 @@ func TestSQLTableUsecase_SyncTable_ReturnsIncrementalRowsAndPersistsPayload(t *t
 	require.Positive(t, saved.SyncAt)
 }
 
+func TestSQLTableUsecase_GetTablesInfoV2_ReturnsStructuredTableMetadata(t *testing.T) {
+	ctx := context.Background()
+	storage := testdb.NewPostgresStorage(t)
+	createSyncItemsTable(t, ctx, storage, "structured_info_items")
+
+	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
+		{Table: "structured_info_items", Columns: []string{"name"}, SinceDays: 7},
+	})
+
+	info, err := tableUsecase.GetTablesInfoV2(ctx, []string{"structured_info_items"})
+	require.NoError(t, err)
+	require.Len(t, info, 1)
+	require.Equal(t, "structured_info_items", info[0].TableName)
+	require.Equal(t, []string{"id"}, info[0].PrimaryKeys)
+	require.Equal(t, []string{"sync_at"}, info[0].Indexes)
+	require.Equal(t, uint(7), info[0].RetentionDays)
+	require.False(t, info[0].ReadyOnly)
+	require.False(t, info[0].WriteOnly)
+	require.Equal(t, []usecase.TableColumnInfoResponse{
+		{Name: "id", Type: "text", NotNull: true},
+		{Name: "name", Type: "text", NotNull: true},
+		{Name: "sync_at", Type: "bigint", NotNull: true},
+	}, info[0].Columns)
+}
+
 func TestSQLTableUsecase_SyncTable_DoesNotReturnIncomingRows(t *testing.T) {
 	ctx := context.Background()
 	storage := testdb.NewPostgresStorage(t)

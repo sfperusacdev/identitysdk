@@ -36,6 +36,23 @@ type TableInfoResponse struct {
 	WriteOnly     bool   `json:"write_only"`
 }
 
+type TableColumnInfoResponse struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	NotNull bool   `json:"not_null"`
+}
+
+type TableInfoV2Response struct {
+	TableName     string                    `json:"table_name"`
+	Columns       []TableColumnInfoResponse `json:"columns"`
+	PrimaryKeys   []string                  `json:"primary_keys"`
+	Indexes       []string                  `json:"indexes"`
+	StartSync     int64                     `json:"start_sync"`
+	RetentionDays uint                      `json:"retention_days"`
+	ReadyOnly     bool                      `json:"read_only"`
+	WriteOnly     bool                      `json:"write_only"`
+}
+
 func (s *SQLTableUsecase) getDescriptor(tableName string) (*descriptor.TableDescriptor, error) {
 	for _, d := range s.descriptors {
 		if d.Table == tableName {
@@ -80,6 +97,84 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 		})
 	}
 	return tablescript, nil
+}
+
+func (s *SQLTableUsecase) GetTablesInfoV2(ctx context.Context, tables []string) ([]TableInfoV2Response, error) {
+	tables = list.NonZeroUniques(tables)
+	if len(tables) == 0 {
+		return []TableInfoV2Response{}, nil
+	}
+
+	result := make([]TableInfoV2Response, 0, len(tables))
+	for _, table := range tables {
+		desc, err := s.getDescriptor(table)
+		if err != nil {
+			return nil, err
+		}
+		columns, err := s.repository.GetTableColumns(ctx, table)
+		if err != nil {
+			return nil, err
+		}
+
+		readOnly := desc.IsReadyOnly(columns)
+		primaryKeys := desc.PrimaryKeyColumns(columns)
+		if len(desc.PrimaryKeys) > 0 && !readOnly {
+			return nil, errs.BadRequestf(
+				"primary keys configuradas solo se permiten en tablas de solo lectura: %s",
+				table,
+			)
+		}
+		if err := validatePrimaryKeysExist(table, primaryKeys, columns); err != nil {
+			return nil, err
+		}
+
+		allowed := append(append([]string{}, desc.Columns...), "created_at", "created_by", "updated_at", "updated_by", "deleted_at", "sync_at")
+		columnInfo := make([]TableColumnInfoResponse, 0, len(columns))
+		indexes := make([]string, 0, 2)
+		for _, column := range columns {
+			name := strings.ToLower(column.ColumnName)
+			isPrimaryKey := false
+			for _, primaryKey := range primaryKeys {
+				if strings.EqualFold(primaryKey, name) {
+					isPrimaryKey = true
+					break
+				}
+			}
+			included := isPrimaryKey
+			if !included {
+				for _, allowedColumn := range allowed {
+					if strings.EqualFold(allowedColumn, name) {
+						included = true
+						break
+					}
+				}
+			}
+			if !included {
+				continue
+			}
+
+			columnInfo = append(columnInfo, TableColumnInfoResponse{
+				Name:    name,
+				Type:    descriptor.NormalizeColumnType(column.ColumnType),
+				NotNull: strings.TrimSpace(strings.ToLower(column.ColumnNotNull)) != "null",
+			})
+			if name == "deleted_at" || name == "sync_at" {
+				indexes = append(indexes, name)
+			}
+		}
+
+		result = append(result, TableInfoV2Response{
+			TableName:     table,
+			Columns:       columnInfo,
+			PrimaryKeys:   primaryKeys,
+			Indexes:       indexes,
+			StartSync:     desc.StartSyncAt().UnixMilli(),
+			RetentionDays: desc.SinceDays,
+			ReadyOnly:     readOnly,
+			WriteOnly:     desc.WriteOnly,
+		})
+	}
+	return result, nil
 }
 
 func validatePrimaryKeysExist(tableName string, primaryKeys []string, columns []descriptor.TableColumn) error {

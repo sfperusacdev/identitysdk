@@ -20,6 +20,40 @@ El flujo esta pensado para clientes que mantienen una base local, por ejemplo SQ
 
 ## Endpoints
 
+### POST `/v2/sync_data/tabla_info`
+
+Devuelve la metadata estructurada para que el cliente construya la tabla local sin ejecutar un script SQL generado por el servidor.
+
+Request body:
+
+```json
+["tabla_1", "tabla_2"]
+```
+
+Response body:
+
+```json
+[
+  {
+    "table_name": "tabla_1",
+    "columns": [
+      {"name": "id", "type": "text", "not_null": true},
+      {"name": "name", "type": "text", "not_null": false}
+    ],
+    "primary_keys": ["id"],
+    "indexes": ["sync_at"],
+    "start_sync": 1710000000000,
+    "retention_days": 30,
+    "read_only": false,
+    "write_only": false
+  }
+]
+```
+
+`columns` contiene las columnas permitidas para sincronizacion, incluyendo las primary keys y columnas internas de sincronizacion. `type` usa el tipo normalizado por el servidor, `not_null` indica si la columna es obligatoria, `primary_keys` contiene las columnas de la clave primaria e `indexes` las columnas para las que el cliente debe crear un indice.
+
+El endpoint v1 continua disponible para clientes que utilizan el campo `script`.
+
 ### POST `/v1/sync_data/tabla_info`
 
 Devuelve la informacion necesaria para que el cliente prepare sus tablas locales y conozca las reglas de sincronizacion.
