@@ -14,7 +14,7 @@ import (
 
 func TestSQLTableUsecase_SyncTable_ReturnsIncrementalRowsAndPersistsPayload(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "sync_items")
 	insertSyncItem(t, ctx, storage, "sync_items", "acme.old", "old row", 10)
 	insertSyncItem(t, ctx, storage, "sync_items", "acme.server", "server row", 200)
@@ -51,7 +51,7 @@ func TestSQLTableUsecase_SyncTable_ReturnsIncrementalRowsAndPersistsPayload(t *t
 
 func TestSQLTableUsecase_GetTablesInfoV2_ReturnsStructuredTableMetadata(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "structured_info_items")
 
 	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
@@ -76,7 +76,7 @@ func TestSQLTableUsecase_GetTablesInfoV2_ReturnsStructuredTableMetadata(t *testi
 
 func TestSQLTableUsecase_SyncTable_DoesNotReturnIncomingRows(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "sync_dedup_items")
 	insertSyncItem(t, ctx, storage, "sync_dedup_items", "acme.item", "server version", 200)
 
@@ -107,7 +107,7 @@ func TestSQLTableUsecase_SyncTable_DoesNotReturnIncomingRows(t *testing.T) {
 
 func TestSQLTableUsecase_SyncTable_WriteOnlyDoesNotReturnServerRows(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "write_only_items")
 	insertSyncItem(t, ctx, storage, "write_only_items", "acme.server", "server row", 1)
 
@@ -140,7 +140,7 @@ func TestSQLTableUsecase_SyncTable_WriteOnlyDoesNotReturnServerRows(t *testing.T
 
 func TestSQLTableUsecase_SyncTable_ReadOnlyBlocksPayload(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "read_only_items")
 
 	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
@@ -164,7 +164,7 @@ func TestSQLTableUsecase_SyncTable_ReadOnlyBlocksPayload(t *testing.T) {
 
 func TestSQLTableUsecase_SyncTable_ReadOnlyAllowsPull(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "read_only_pull_items")
 	insertSyncItem(t, ctx, storage, "read_only_pull_items", "acme.server", "server row", 200)
 
@@ -183,7 +183,7 @@ func TestSQLTableUsecase_SyncTable_ReadOnlyAllowsPull(t *testing.T) {
 
 func TestSQLTableUsecase_SyncTable_ReadOnlyUsesConfiguredPrimaryKeys(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createReadOnlyItemsTable(t, ctx, storage, "readonly_configured_pk_items")
 	insertSyncItem(t, ctx, storage, "readonly_configured_pk_items", "acme.server", "server row", 200)
 
@@ -203,7 +203,7 @@ func TestSQLTableUsecase_SyncTable_ReadOnlyUsesConfiguredPrimaryKeys(t *testing.
 
 func TestSQLTableUsecase_SyncTable_RejectsConfiguredPrimaryKeysOnWritableTable(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "writable_configured_pk_items")
 
 	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
@@ -219,7 +219,7 @@ func TestSQLTableUsecase_SyncTable_RejectsConfiguredPrimaryKeysOnWritableTable(t
 
 func TestSQLTableUsecase_SyncTable_RejectsPayloadOutsideDomain(t *testing.T) {
 	ctx := context.Background()
-	storage := testdb.NewPostgresStorage(t)
+	storage := testdb.NewPostgresStorage(t, nil)
 	createSyncItemsTable(t, ctx, storage, "scope_items")
 
 	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{

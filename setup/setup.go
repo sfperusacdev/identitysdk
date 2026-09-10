@@ -38,7 +38,6 @@ import (
 	"github.com/sfperusacdev/identitysdk/mmsql"
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	identitybridge "github.com/sfperusacdev/identitysdk/sark_services"
-	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlreader"
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
 
@@ -270,7 +269,6 @@ func NewService(
 		packageName = command.Flags().StringP("package", "p", "properties", "Specifies the Go package name for the generated code")
 		service.Command.AddCommand(command)
 	}
-	testdb.SetMigrationFS(options.migrationsDir)
 	return service
 }
 

@@ -38,13 +38,7 @@ var (
 	sharedErr       error
 )
 
-var migrationFS fs.FS
-
-func SetMigrationFS(fsys fs.FS) {
-	migrationFS = fsys
-}
-
-func NewPostgresStorage(t *testing.T) connection.StorageManager {
+func NewPostgresStorage(t *testing.T, migrationFS fs.FS) connection.StorageManager {
 	t.Helper()
 
 	postgresOnce.Do(func() {
@@ -54,7 +48,7 @@ func NewPostgresStorage(t *testing.T) connection.StorageManager {
 	require.NoError(t, sharedErr)
 	require.NotNil(t, sharedStorage)
 
-	require.NoError(t, runMigrations(sharedStorage))
+	require.NoError(t, runMigrations(sharedStorage, migrationFS))
 
 	t.Cleanup(func() {
 		dropPublicTables(t, sharedStorage)
@@ -122,7 +116,7 @@ func newStorageFromContainer(ctx context.Context, container *tcpostgres.Postgres
 	})
 }
 
-func runMigrations(storage connection.StorageManager) error {
+func runMigrations(storage connection.StorageManager, migrationFS fs.FS) error {
 	goose.SetBaseFS(migrationFS)
 	var ctx = context.TODO()
 	tx := storage.Conn(ctx)
