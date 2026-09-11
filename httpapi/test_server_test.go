@@ -1,14 +1,44 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewTestContext(t *testing.T) {
+	type contextKey struct{}
+	parent := context.WithValue(context.Background(), contextKey{}, "parent-value")
+
+	ctx := NewTestContext(parent)
+
+	claims, ok := identitysdk.JwtClaims(ctx)
+	require.True(t, ok)
+	require.Equal(t, entities.Jwt{Empresa: testEmpresa, Username: testUsuario}, claims)
+
+	session, ok := identitysdk.ReadSession(ctx)
+	require.True(t, ok)
+	require.Equal(t, entities.Session{
+		Company:  testEmpresa,
+		Username: testUsuario,
+		Permissions: []entities.Permission{
+			{ID: "admin", CompanyBrances: []string{testSucursal}},
+		},
+	}, session)
+	require.Equal(t, testEmpresa, identitysdk.Empresa(ctx))
+	_, sucursal := identitysdk.Empresa_Sucursal(ctx)
+	require.Equal(t, testSucursal, sucursal)
+	require.Equal(t, testUsuario, identitysdk.Username(ctx))
+	require.Equal(t, testToken, identitysdk.Token(ctx))
+	require.Equal(t, "test", identitysdk.RequestOrigin(ctx))
+	require.Equal(t, "parent-value", ctx.Value(contextKey{}))
+}
 
 func TestNewTestServerProvidesIdentityContext(t *testing.T) {
 	server := NewTestServer(t, &DefaultHandler{

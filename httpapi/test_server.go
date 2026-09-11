@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
@@ -55,25 +56,31 @@ func testSucursalMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 func testIdentityMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		ctx := c.Request().Context()
-		ctx = identitysdk.CtxWithJwtClaims(ctx, entities.Jwt{
-			Empresa:  testEmpresa,
-			Username: testUsuario,
-		})
-		ctx = identitysdk.CtxWithSession(ctx, entities.Session{
-			Company:  testEmpresa,
-			Username: testUsuario,
-			Permissions: []entities.Permission{
-				{ID: "admin", CompanyBrances: []string{testSucursal}},
-			},
-		})
-		ctx = identitysdk.CtxWithDomain(ctx, testEmpresa)
-		ctx = identitysdk.CtxWithUsername(ctx, testUsuario)
-		ctx = identitysdk.CtxWithSucursal(ctx, testSucursal)
-		ctx = identitysdk.CtxWithToken(ctx, testToken)
-		ctx = identitysdk.CtxWithRequestOrigin(ctx, "test")
+		ctx := NewTestContext(c.Request().Context())
 
 		c.SetRequest(c.Request().WithContext(ctx))
 		return next(c)
 	}
+}
+
+// NewTestContext creates a context with the deterministic identity used by the
+// test server, preserving values and cancellation from parent.
+func NewTestContext(parent context.Context) context.Context {
+	ctx := parent
+	ctx = identitysdk.CtxWithJwtClaims(ctx, entities.Jwt{
+		Empresa:  testEmpresa,
+		Username: testUsuario,
+	})
+	ctx = identitysdk.CtxWithSession(ctx, entities.Session{
+		Company:  testEmpresa,
+		Username: testUsuario,
+		Permissions: []entities.Permission{
+			{ID: "admin", CompanyBrances: []string{testSucursal}},
+		},
+	})
+	ctx = identitysdk.CtxWithDomain(ctx, testEmpresa)
+	ctx = identitysdk.CtxWithUsername(ctx, testUsuario)
+	ctx = identitysdk.CtxWithSucursal(ctx, testSucursal)
+	ctx = identitysdk.CtxWithToken(ctx, testToken)
+	return identitysdk.CtxWithRequestOrigin(ctx, "test")
 }
