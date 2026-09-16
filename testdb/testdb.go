@@ -32,6 +32,7 @@ const (
 
 var (
 	postgresOnce sync.Once
+	testdbMu     sync.Mutex
 
 	sharedStorage   connection.StorageManager
 	sharedContainer *tcpostgres.PostgresContainer
@@ -40,19 +41,25 @@ var (
 
 func NewPostgresStorage(t *testing.T, migrationFS fs.FS) connection.StorageManager {
 	t.Helper()
+	testdbMu.Lock()
 
 	postgresOnce.Do(func() {
 		sharedStorage, sharedContainer, sharedErr = startPostgres()
+	})
+
+	t.Cleanup(func() {
+		if sharedStorage != nil {
+			if err := resetPublicSchema(sharedStorage); err != nil {
+				t.Error(err)
+			}
+		}
+		testdbMu.Unlock()
 	})
 
 	require.NoError(t, sharedErr)
 	require.NotNil(t, sharedStorage)
 
 	require.NoError(t, runMigrations(sharedStorage, migrationFS))
-
-	t.Cleanup(func() {
-		dropPublicTables(t, sharedStorage)
-	})
 
 	return sharedStorage
 }
@@ -193,41 +200,10 @@ func recoverViews(db *sql.DB, files []dbViewFile) error {
 	return nil
 }
 
-func dropPublicTables(t *testing.T, storage connection.StorageManager) {
-	t.Helper()
-
-	err := storage.Conn(context.Background()).Exec(`
-		DO $$
-		DECLARE
-			view_record RECORD;
-			table_record RECORD;
-			schema_record RECORD;
-		BEGIN
-			FOR view_record IN (
-				SELECT schemaname, viewname
-				FROM pg_views
-				WHERE schemaname = 'public'
-			) LOOP
-				EXECUTE 'DROP VIEW IF EXISTS ' || quote_ident(view_record.schemaname) || '.' || quote_ident(view_record.viewname) || ' CASCADE';
-			END LOOP;
-
-			FOR table_record IN (
-				SELECT tablename
-				FROM pg_tables
-				WHERE schemaname = 'public'
-			) LOOP
-				EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(table_record.tablename) || ' CASCADE';
-			END LOOP;
-
-			FOR schema_record IN (
-				SELECT schema_name
-				FROM information_schema.schemata
-				WHERE schema_name NOT IN ('public', 'information_schema')
-				  AND schema_name NOT LIKE 'pg_%'
-			) LOOP
-				EXECUTE 'DROP SCHEMA IF EXISTS ' || quote_ident(schema_record.schema_name) || ' CASCADE';
-			END LOOP;
-		END $$;
+func resetPublicSchema(storage connection.StorageManager) error {
+	return storage.Conn(context.Background()).Exec(`
+		DROP SCHEMA IF EXISTS public CASCADE;
+		CREATE SCHEMA public;
+		GRANT ALL ON SCHEMA public TO public;
 	`).Error
-	require.NoError(t, err)
 }

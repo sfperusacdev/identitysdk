@@ -70,6 +70,7 @@ func NewTestContext(parent context.Context) context.Context {
 	ctx = identitysdk.CtxWithJwtClaims(ctx, entities.Jwt{
 		Empresa:  testEmpresa,
 		Username: testUsuario,
+		Zona:     "America/Lima",
 	})
 	ctx = identitysdk.CtxWithSession(ctx, entities.Session{
 		Company:  testEmpresa,

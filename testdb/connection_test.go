@@ -4,11 +4,36 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/fstest"
 
 	connection "github.com/sfperusacdev/identitysdk/pg-connection"
 	"github.com/sfperusacdev/identitysdk/testdb"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewPostgresStorage_MigrationObjectsAreResetBetweenTests(t *testing.T) {
+	migrationFS := fstest.MapFS{
+		"migrations/001_create_function.sql": &fstest.MapFile{Data: []byte(`
+-- +goose Up
+-- +goose StatementBegin
+CREATE FUNCTION testdb_migration_function() RETURNS integer
+LANGUAGE SQL AS $$ SELECT 1 $$;
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP FUNCTION testdb_migration_function();
+-- +goose StatementEnd
+`)},
+	}
+
+	t.Run("first migration", func(t *testing.T) {
+		testdb.NewPostgresStorage(t, migrationFS)
+	})
+	t.Run("same migration can run again", func(t *testing.T) {
+		testdb.NewPostgresStorage(t, migrationFS)
+	})
+}
 
 func TestStorageManager_Conn(t *testing.T) {
 	ctx := context.Background()

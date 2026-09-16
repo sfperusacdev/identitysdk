@@ -20,7 +20,7 @@ func TestNewTestContext(t *testing.T) {
 
 	claims, ok := identitysdk.JwtClaims(ctx)
 	require.True(t, ok)
-	require.Equal(t, entities.Jwt{Empresa: testEmpresa, Username: testUsuario}, claims)
+	require.Equal(t, entities.Jwt{Empresa: testEmpresa, Username: testUsuario, Zona: "America/Lima"}, claims)
 
 	session, ok := identitysdk.ReadSession(ctx)
 	require.True(t, ok)
@@ -37,6 +37,9 @@ func TestNewTestContext(t *testing.T) {
 	require.Equal(t, testUsuario, identitysdk.Username(ctx))
 	require.Equal(t, testToken, identitysdk.Token(ctx))
 	require.Equal(t, "test", identitysdk.RequestOrigin(ctx))
+	zona, err := identitysdk.Tz(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "America/Lima", zona.String())
 	require.Equal(t, "parent-value", ctx.Value(contextKey{}))
 }
 
