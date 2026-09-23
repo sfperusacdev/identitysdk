@@ -19,6 +19,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
+	"github.com/sfperusacdev/identitysdk/events"
 	identitygrpc "github.com/sfperusacdev/identitysdk/grpc"
 	grpcclient "github.com/sfperusacdev/identitysdk/grpc/client"
 	"github.com/sfperusacdev/identitysdk/helpers/docxtopdf"
@@ -44,6 +45,7 @@ import (
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/user0608/ifdevmode"
 	"github.com/user0608/numeroaletras"
 	"go.uber.org/fx"
@@ -281,22 +283,22 @@ func (s *Service) prepareConfigPath(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (s *Service) configs() (configs.GeneralServiceConfigProvider, configs.DatabaseConfigProvider, error) {
+func (s *Service) configs() (configs.GeneralServiceConfigProvider, configs.DatabaseConfigProvider, *viper.Viper, error) {
 	if s.configPath == nil {
 		slog.Error("configPath is nil")
-		return nil, nil, errors.New("config path is nil")
+		return nil, nil, nil, errors.New("config path is nil")
 	}
 
-	ceneralConfig, dbconfig, err := s.options.configProvider(*s.configPath)
+	ceneralConfig, dbconfig, vipper, err := s.options.configProvider(*s.configPath)
 	if err != nil {
 		slog.Error("Error fetching database configuration", "error", err)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return ceneralConfig, dbconfig, nil
+	return ceneralConfig, dbconfig, vipper, nil
 }
 
 func (s *Service) _getConnectionManager() (connection.StorageManager, error) {
-	_, c, err := s.configs()
+	_, c, _, err := s.configs()
 	if err != nil {
 		slog.Error("Error fetching database configs", "error", err)
 		return nil, err
@@ -522,7 +524,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			slog.Error("Error opening database connection", "error", err)
 			os.Exit(1)
 		}
-		gsc, _, err := s.configs()
+		gsc, _, vipper, err := s.configs()
 		if err != nil {
 			slog.Error("Error loading configs", "error", err)
 			os.Exit(1)
@@ -593,6 +595,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 					}
 					return *s.configPath
 				},
+				func() *viper.Viper { return vipper },
 				func() configs.GeneralServiceConfigProvider { return gsc },
 				func() connection.StorageManager { return connectionManager },
 				func(c configs.GeneralServiceConfigProvider) httpapi.ServeURLString {
@@ -636,6 +639,7 @@ func (s *Service) Run(opts ...fx.Option) error {
 			monitoring.Module,
 			identitygrpc.Module,
 			httpapi.Module,
+			events.Module,
 			fx.Invoke(s.publishServiceDetails, identitygrpc.StartServer, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)

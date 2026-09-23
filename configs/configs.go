@@ -2,8 +2,8 @@ package configs
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
-	"path"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -15,6 +15,7 @@ type GeneralServiceConfigProvider interface {
 	ServiceID() string
 	ListenAddress() string
 	GRPCAddress() string
+	RabbitMQURL() string
 	Identity() string
 	IdentityAccessToken() string
 	CacheDir() string
@@ -30,11 +31,12 @@ type DatabaseConfigProvider interface {
 	GetLogLevel() string
 }
 
-type ConfigsProviderFunc func(configPath ConfigPath) (GeneralServiceConfigProvider, DatabaseConfigProvider, error)
+type ConfigsProviderFunc func(configPath ConfigPath) (GeneralServiceConfigProvider, DatabaseConfigProvider, *viper.Viper, error)
 
 type GeneralServiceConfig struct {
 	ListenAddressValue       string         `mapstructure:"address" yaml:"address"`
 	GRPCAddressValue         string         `mapstructure:"grpc_address" yaml:"grpc_address"`
+	RabbitMQURLValue         string         `mapstructure:"rabbitmq_url" yaml:"rabbitmq_url"`
 	IdentityValue            string         `mapstructure:"identity" yaml:"identity"`
 	IdentityAccessTokenValue string         `mapstructure:"identity_access_token" yaml:"identity_access_token"`
 	CacheDirVal              string         `mapstructure:"cache_dir" yaml:"cache_dir"`
@@ -73,6 +75,11 @@ func (c *GeneralServiceConfig) ListenAddress() string {
 // GRPCAddress implements GeneralServiceConfigProvider.
 func (c *GeneralServiceConfig) GRPCAddress() string {
 	return c.GRPCAddressValue
+}
+
+// GRPCAddress implements GeneralServiceConfigProvider.
+func (c *GeneralServiceConfig) RabbitMQURL() string {
+	return c.RabbitMQURLValue
 }
 
 // Identity implements GeneralServiceConfigProvider.
@@ -134,32 +141,25 @@ func (c *GeneralServiceConfig) GetUsername() string {
 	return c.DatabaseEntity.Username
 }
 
-func (c *GeneralServiceConfig) validate() error {
-	// TODO agregar validaciones específicas si es necesario
-	return nil
-}
-
-func DefaultConfigsProviderFunc(configPath ConfigPath) (GeneralServiceConfigProvider, DatabaseConfigProvider, error) {
+func DefaultConfigsProviderFunc(configPath ConfigPath) (GeneralServiceConfigProvider, DatabaseConfigProvider, *viper.Viper, error) {
 	var stringConfigPath = strings.TrimSpace(string(configPath))
-	var c GeneralServiceConfig
 	if configPath == "" {
 		slog.Error("configPath is empty")
-		return nil, nil, errors.New("config path is empty")
-	}
-	v := viper.New()
-	v.SetConfigFile(stringConfigPath)
-	v.SetConfigType("yaml")
-	if err := v.ReadInConfig(); err != nil {
-		slog.Error("reading config", "file", path.Base(stringConfigPath), "error", err)
-		return nil, nil, err
-	}
-	if err := v.Unmarshal(&c); err != nil {
-		slog.Error("unmarshal config", "file", path.Base(stringConfigPath), "error", err)
-		return nil, nil, err
+		return nil, nil, nil, errors.New("config path is empty")
 	}
 
-	if err := c.validate(); err != nil {
-		return nil, nil, err
+	v := viper.New()
+	v.SetConfigFile(stringConfigPath)
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, nil, nil, fmt.Errorf("read config %q: %w", stringConfigPath, err)
 	}
-	return &c, &c, nil
+
+	var c GeneralServiceConfig
+	if err := v.Unmarshal(&c); err != nil {
+		slog.Error("unmarshal config", "error", err)
+		return nil, nil, nil, err
+	}
+
+	return &c, &c, v, nil
 }

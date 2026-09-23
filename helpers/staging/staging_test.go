@@ -30,6 +30,7 @@ func (c *testConfig) ServiceID() string           { return "" }
 func (c *testConfig) ListenAddress() string       { return "" }
 func (c *testConfig) GRPCAddress() string         { return "" }
 func (c *testConfig) Identity() string            { return "" }
+func (c *testConfig) RabbitMQURL() string         { return "" }
 func (c *testConfig) IdentityAccessToken() string { return "" }
 func (c *testConfig) CacheDir() string            { return "" }
 func (c *testConfig) StagingDir() string          { return c.stagingDir }

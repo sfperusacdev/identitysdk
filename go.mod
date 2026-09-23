@@ -22,6 +22,7 @@ require (
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/pressly/goose/v3 v3.24.2
+	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/rs/xid v1.6.0
 	github.com/shirou/gopsutil/v4 v4.26.5
 	github.com/shopspring/decimal v1.4.0
