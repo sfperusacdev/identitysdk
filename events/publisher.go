@@ -17,12 +17,6 @@ type Publisher interface {
 	Close() error
 }
 
-// PublicherChannel is kept for compatibility with the original misspelled API.
-type PublicherChannel interface {
-	Publisher
-	Publich(ctx context.Context, queue QueueName, body any) error
-}
-
 type publisher struct {
 	url string
 
@@ -46,12 +40,6 @@ func NewPublisher(lc fx.Lifecycle, config configs.GeneralServiceConfigProvider) 
 		},
 		OnStop: func(context.Context) error { return p.Close() },
 	})
-	return p
-}
-
-func NewPublicherChannel(config configs.GeneralServiceConfigProvider) PublicherChannel {
-	p := newPublisher(config.RabbitMQURL())
-	p.start()
 	return p
 }
 
@@ -178,10 +166,6 @@ func (p *publisher) Publish(ctx context.Context, queue QueueName, data any) erro
 		ContentType: "application/json",
 		Body:        body,
 	})
-}
-
-func (p *publisher) Publich(ctx context.Context, queue QueueName, data any) error {
-	return p.Publish(ctx, queue, data)
 }
 
 func (p *publisher) Close() error {

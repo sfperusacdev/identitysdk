@@ -22,9 +22,6 @@ func AsConsumer(fn any) any {
 	return fx.Annotate(fn, fx.ResultTags(ConsumerGroupTag))
 }
 
-// AsConsummer is kept for compatibility with the original misspelled API.
-func AsConsummer(fn any) any { return AsConsumer(fn) }
-
 type consumerList []Consumer
 
 func mapConsumers(consumers []Consumer) consumerList {
