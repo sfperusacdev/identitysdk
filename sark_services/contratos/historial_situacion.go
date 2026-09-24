@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sfperusacdev/identitysdk/xreq"
+	"github.com/user0608/goones/types"
 )
 
 type HistorialSituacionDTO struct {
@@ -40,5 +41,29 @@ func (s *ContratosService) HistorialSituaciones(ctx context.Context, activos boo
 	); err != nil {
 		return nil, err
 	}
+	return apiResponse.Data, nil
+}
+
+func (s *ContratosService) HistorialSituacionesActivas(ctx context.Context, desde, hasta types.DateOnly) ([]HistorialSituacionDTO, error) {
+	apiurl, err := s.env.GetContratosServiceURL(ctx, s.env.Empresa(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	var apiResponse struct {
+		Data []HistorialSituacionDTO `json:"data"`
+	}
+
+	if err := xreq.MakeRequest(ctx, apiurl,
+		"/api/v2/trabajadores/historial-situacion-activos",
+		xreq.WithQueryParam("sucursal", s.env.Sucursal(ctx)),
+		xreq.WithQueryParam("desde", desde.String()),
+		xreq.WithQueryParam("hasta", hasta.String()),
+		xreq.WithUnmarshalResponseInto(&apiResponse),
+		xreq.WithAuthorization(s.env.SessionToken(ctx)),
+	); err != nil {
+		return nil, err
+	}
+
 	return apiResponse.Data, nil
 }
