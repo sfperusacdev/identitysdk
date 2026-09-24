@@ -2,6 +2,7 @@ package sark_services
 
 import (
 	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
+	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 	"github.com/sfperusacdev/identitysdk/sark_services/global"
 	identityservice "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/sark_services/storage"
@@ -15,6 +16,7 @@ type SarkBridgeService struct {
 	Storage    *storage.StorageService
 	Asistencia *asistencia.AsistenciaService
 	Global     *global.GlobalService
+	Contratos  *contratos.ContratosService
 }
 
 func NewSarkBridgeService(
@@ -24,6 +26,7 @@ func NewSarkBridgeService(
 	Storage *storage.StorageService,
 	Asistencia *asistencia.AsistenciaService,
 	Global *global.GlobalService,
+	Contratos *contratos.ContratosService,
 ) *SarkBridgeService {
 	return &SarkBridgeService{
 		Env:        Env,
@@ -32,5 +35,6 @@ func NewSarkBridgeService(
 		Storage:    Storage,
 		Asistencia: Asistencia,
 		Global:     Global,
+		Contratos:  Contratos,
 	}
 }

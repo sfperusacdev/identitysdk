@@ -2,6 +2,7 @@ package sark_services
 
 import (
 	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
+	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 	"github.com/sfperusacdev/identitysdk/sark_services/global"
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/sark_services/storage"
@@ -19,6 +20,7 @@ var Module = fx.Module("identitysdk/sark_services",
 		storage.NewStorageService,
 		asistencia.NewAsistenciaService,
 		global.NewGlobalService,
+		contratos.NewContratosService,
 		NewSarkBridgeService,
 	),
 )
