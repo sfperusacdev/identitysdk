@@ -93,9 +93,9 @@ func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([
 	if len(data.Items) == 0 {
 		return nil, errors.New("no items provided to generate document")
 	}
-	if len(data.BackgroundJPG) == 0 {
-		return nil, errors.New("background image (JPG) is required")
-	}
+	// if len(data.BackgroundJPG) == 0 {
+	// 	return nil, errors.New("background image (JPG) is required")
+	// }
 	pdf := &gopdf.GoPdf{}
 	defer pdf.Close()
 	pdf.Start(gopdf.Config{
@@ -142,10 +142,14 @@ func (b *FotocheckBuilder) addImage(pdf *gopdf.GoPdf, rect *gopdf.Rect, x, y flo
 }
 
 func (b *FotocheckBuilder) buildPdf(pdf *gopdf.GoPdf, data *FotocheckData, pages int, cols []float64, rows []float64) error {
-	backgroundHolder, err := gopdf.ImageHolderByBytes(data.BackgroundJPG)
-	if err != nil {
-		slog.Error("failed to create background image holder", "error", err)
-		return fmt.Errorf("failed to create template image holder: %w", err)
+	var backgroundHolder gopdf.ImageHolder
+	if data.BackgroundJPG != nil {
+		var err error
+		backgroundHolder, err = gopdf.ImageHolderByBytes(data.BackgroundJPG)
+		if err != nil {
+			slog.Error("failed to create background image holder", "error", err)
+			return fmt.Errorf("failed to create template image holder: %w", err)
+		}
 	}
 
 	var idx = 0
@@ -156,8 +160,10 @@ MAIN_LOOP:
 		for _, col := range cols {
 			for _, row := range rows {
 				rect := &gopdf.Rect{W: data.WidthMM, H: data.HeightMM}
-				if err := b.addImage(pdf, rect, row, col, backgroundHolder); err != nil {
-					return nil
+				if backgroundHolder != nil {
+					if err := b.addImage(pdf, rect, row, col, backgroundHolder); err != nil {
+						return nil
+					}
 				}
 				var item = data.Items[idx]
 				for _, elm := range item.Elements {
