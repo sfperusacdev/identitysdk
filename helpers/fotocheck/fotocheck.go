@@ -73,18 +73,18 @@ func (b *FotocheckBuilder) totalPages(itemCount, rowsPerPage, colsPerPage int) i
 }
 
 func (b *FotocheckBuilder) BuildPdf(ctx context.Context, data *FotocheckData) ([]byte, error) {
-	if data.PageWidthMM == 0 {
+	if data.PageWidthMM <= 0 {
 		data.PageWidthMM = 210
 	}
-	if data.PageHeightMM == 0 {
+	if data.PageHeightMM <= 0 {
 		data.PageHeightMM = 297
 	}
 
-	if data.MinGapX == 0 {
-		data.PageHeightMM = 15
+	if data.MinGapX < 0 {
+		data.MinGapX = 0
 	}
-	if data.MinGapY == 0 {
-		data.PageHeightMM = 5
+	if data.MinGapY < 0 {
+		data.MinGapY = 0
 	}
 
 	if data.HeightMM == 0 || data.WidthMM == 0 {
