@@ -51,6 +51,24 @@ type FotocheckImage struct {
 	Circle   bool
 }
 
+// FotocheckLine draws a line inside a fotocheck. Start and End coordinates are
+// relative to the fotocheck dimensions; LineWidth is measured in millimeters.
+type FotocheckLine struct {
+	Start     Position
+	End       Position
+	LineWidth float64
+	Color     Color
+	Style     LineStyle
+}
+
+type LineStyle uint8
+
+const (
+	LineStyleSolid LineStyle = iota
+	LineStyleDashed
+	LineStyleDotted
+)
+
 type BarcodeType uint8
 
 const (
@@ -75,10 +93,12 @@ var _ FotocheckElement = (*FotocheckImage)(nil)
 var _ FotocheckElement = (*FotocheckText)(nil)
 var _ FotocheckElement = (*FotocheckBarcode)(nil)
 var _ FotocheckElement = (*FotocheckParagraphBox)(nil)
+var _ FotocheckElement = (*FotocheckLine)(nil)
 
 func (FotocheckImage) isFotocheckElement()   {}
 func (FotocheckText) isFotocheckElement()    {}
 func (FotocheckBarcode) isFotocheckElement() {}
+func (FotocheckLine) isFotocheckElement()    {}
 
 type Fotocheck struct {
 	Data     any

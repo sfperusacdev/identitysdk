@@ -1,6 +1,7 @@
 package fotocheck
 
 import (
+	"bytes"
 	"context"
 	"testing"
 )
@@ -64,5 +65,40 @@ func TestBuildPdfNormalizesPageAndGapDefaults(t *testing.T) {
 				t.Errorf("MinGapY = %v, want %v", data.MinGapY, tt.wantMinGapY)
 			}
 		})
+	}
+}
+
+func TestBuildPdfWithLine(t *testing.T) {
+	data := &FotocheckData{
+		WidthMM:  100,
+		HeightMM: 50,
+		Items: []Fotocheck{{
+			Elements: []FotocheckElement{
+				FotocheckLine{
+					Start:     Position{X: 0.1, Y: 0.2},
+					End:       Position{X: 0.9, Y: 0.8},
+					LineWidth: 0.5,
+					Color:     Color{R: 255, G: 0, B: 0},
+				},
+				FotocheckLine{
+					Start: Position{X: 0.1, Y: 0.5},
+					End:   Position{X: 0.9, Y: 0.5},
+					Style: LineStyleDashed,
+				},
+				FotocheckLine{
+					Start: Position{X: 0.1, Y: 0.8},
+					End:   Position{X: 0.9, Y: 0.8},
+					Style: LineStyleDotted,
+				},
+			},
+		}},
+	}
+
+	pdf, err := NewFotocheckBuilder().BuildPdf(context.Background(), data)
+	if err != nil {
+		t.Fatalf("BuildPdf() error = %v", err)
+	}
+	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
+		t.Fatal("BuildPdf() did not return a PDF document")
 	}
 }

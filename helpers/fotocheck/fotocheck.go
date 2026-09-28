@@ -162,7 +162,7 @@ MAIN_LOOP:
 				rect := &gopdf.Rect{W: data.WidthMM, H: data.HeightMM}
 				if backgroundHolder != nil {
 					if err := b.addImage(pdf, rect, row, col, backgroundHolder); err != nil {
-						return nil
+						return err
 					}
 				}
 				var item = data.Items[idx]
@@ -184,7 +184,7 @@ MAIN_LOOP:
 							return fmt.Errorf("failed to set font size at index %d: %w", idx, err)
 						}
 						if !v.Color.IsZero() {
-							pdf.SetTextColor(v.Color.R, v.Color.G, v.Color.R)
+							pdf.SetTextColor(v.Color.R, v.Color.G, v.Color.B)
 						} else {
 							pdf.SetTextColor(0, 0, 0)
 						}
@@ -209,7 +209,7 @@ MAIN_LOOP:
 							return fmt.Errorf("failed to set font size at index %d: %w", idx, err)
 						}
 						if !v.Color.IsZero() {
-							pdf.SetTextColor(v.Color.R, v.Color.G, v.Color.R)
+							pdf.SetTextColor(v.Color.R, v.Color.G, v.Color.B)
 						} else {
 							pdf.SetTextColor(0, 0, 0)
 						}
@@ -258,6 +258,27 @@ MAIN_LOOP:
 							slog.Error("failed to insert image", "index", idx, "error", err)
 							return fmt.Errorf("failed to insert image at index %d: %w", idx, err)
 						}
+
+					case FotocheckLine:
+						x1 := row + v.Start.X*data.WidthMM
+						y1 := col + v.Start.Y*data.HeightMM
+						x2 := row + v.End.X*data.WidthMM
+						y2 := col + v.End.Y*data.HeightMM
+						lineWidth := v.LineWidth
+						if lineWidth <= 0 {
+							lineWidth = 0.2
+						}
+						pdf.SetLineWidth(lineWidth)
+						pdf.SetStrokeColor(v.Color.R, v.Color.G, v.Color.B)
+						lineType := ""
+						switch v.Style {
+						case LineStyleDashed:
+							lineType = "dashed"
+						case LineStyleDotted:
+							lineType = "dotted"
+						}
+						pdf.SetLineType(lineType)
+						pdf.Line(x1, y1, x2, y2)
 
 					case FotocheckBarcode:
 						var x = row + v.X*data.WidthMM

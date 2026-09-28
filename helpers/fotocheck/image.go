@@ -2,25 +2,25 @@ package fotocheck
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/draw"
-	"image/jpeg"
 	"image/png"
 )
 
 func circularCropBytes(jpgIn []byte) ([]byte, error) {
 	src, _, err := image.Decode(bytes.NewReader(jpgIn))
 	if err != nil {
-		// asegúrate de registrar: _ "image/jpeg"
-		if _, jerr := jpeg.Decode(bytes.NewReader(jpgIn)); jerr != nil {
-			return nil, err
-		}
+		return nil, fmt.Errorf("failed to decode image for circular crop: %w", err)
 	}
 
 	sw, sh := src.Bounds().Dx(), src.Bounds().Dy()
 	diam := sw
 	if sh < diam {
 		diam = sh
+	}
+	if diam == 0 {
+		return nil, fmt.Errorf("cannot circularly crop an empty image")
 	}
 
 	dst := image.NewRGBA(image.Rect(0, 0, diam, diam))
