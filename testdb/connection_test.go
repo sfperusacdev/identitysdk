@@ -15,6 +15,9 @@ func TestNewPostgresStorage_MigrationObjectsAreResetBetweenTests(t *testing.T) {
 	migrationFS := fstest.MapFS{
 		"migrations/001_create_function.sql": &fstest.MapFile{Data: []byte(`
 -- +goose Up
+CREATE SCHEMA identity;
+CREATE SCHEMA pgapp;
+CREATE TABLE identity.records (id integer PRIMARY KEY);
 -- +goose StatementBegin
 CREATE FUNCTION testdb_migration_function() RETURNS integer
 LANGUAGE SQL AS $$ SELECT 1 $$;
@@ -24,14 +27,22 @@ LANGUAGE SQL AS $$ SELECT 1 $$;
 -- +goose StatementBegin
 DROP FUNCTION testdb_migration_function();
 -- +goose StatementEnd
+DROP SCHEMA identity CASCADE;
+DROP SCHEMA pgapp CASCADE;
 `)},
 	}
 
 	t.Run("first migration", func(t *testing.T) {
-		testdb.NewPostgresStorage(t, migrationFS)
+		storage := testdb.NewPostgresStorage(t, migrationFS)
+		err := storage.Conn(context.Background()).Exec(`INSERT INTO identity.records (id) VALUES (1)`).Error
+		require.NoError(t, err)
 	})
 	t.Run("same migration can run again", func(t *testing.T) {
-		testdb.NewPostgresStorage(t, migrationFS)
+		storage := testdb.NewPostgresStorage(t, migrationFS)
+		var count int64
+		err := storage.Conn(context.Background()).Table("identity.records").Count(&count).Error
+		require.NoError(t, err)
+		require.Zero(t, count)
 	})
 }
 

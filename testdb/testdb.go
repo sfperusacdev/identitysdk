@@ -49,7 +49,7 @@ func NewPostgresStorage(t *testing.T, migrationFS fs.FS) connection.StorageManag
 
 	t.Cleanup(func() {
 		if sharedStorage != nil {
-			if err := resetPublicSchema(sharedStorage); err != nil {
+			if err := resetSchemas(sharedStorage); err != nil {
 				t.Error(err)
 			}
 		}
@@ -200,10 +200,24 @@ func recoverViews(db *sql.DB, files []dbViewFile) error {
 	return nil
 }
 
-func resetPublicSchema(storage connection.StorageManager) error {
+func resetSchemas(storage connection.StorageManager) error {
 	return storage.Conn(context.Background()).Exec(`
-		DROP SCHEMA IF EXISTS public CASCADE;
-		CREATE SCHEMA public;
-		GRANT ALL ON SCHEMA public TO public;
+		DO $$
+		DECLARE
+			schema_record RECORD;
+		BEGIN
+			FOR schema_record IN (
+				SELECT schema_name
+				FROM information_schema.schemata
+				WHERE schema_name NOT IN ('public', 'information_schema')
+				  AND schema_name !~ '^pg_'
+			) LOOP
+				EXECUTE format('DROP SCHEMA IF EXISTS %I CASCADE', schema_record.schema_name);
+			END LOOP;
+
+			DROP SCHEMA IF EXISTS public CASCADE;
+			CREATE SCHEMA public;
+			GRANT ALL ON SCHEMA public TO public;
+		END $$;
 	`).Error
 }
