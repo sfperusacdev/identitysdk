@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/sfperusacdev/identitysdk/setup/sqlsyncdata/descriptor"
@@ -18,8 +19,14 @@ type SQLTableUsecase struct {
 }
 
 func NewSQLTableUsecase(descriptors TableDescriptors, repository *repos.SQLTableRepository) (*SQLTableUsecase, error) {
-	if len(descriptors) > 0 {
-		// TODO; validar descriptors
+	publicNames := make(map[string]string, len(descriptors))
+	for _, desc := range descriptors {
+		publicName := desc.PublicName()
+		collisionKey := strings.ToLower(strings.TrimSpace(publicName))
+		if previous, exists := publicNames[collisionKey]; exists {
+			return nil, fmt.Errorf("nombre público de tabla duplicado %q (tablas físicas %q y %q)", publicName, previous, desc.Table)
+		}
+		publicNames[collisionKey] = desc.Table
 	}
 	return &SQLTableUsecase{
 		descriptors: descriptors,
@@ -55,7 +62,7 @@ type TableInfoV2Response struct {
 
 func (s *SQLTableUsecase) getDescriptor(tableName string) (*descriptor.TableDescriptor, error) {
 	for _, d := range s.descriptors {
-		if d.Table == tableName {
+		if d.PublicName() == tableName {
 			return &d, nil
 		}
 	}
@@ -73,7 +80,7 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 		if err != nil {
 			return nil, err
 		}
-		columns, err := s.repository.GetTableColumns(ctx, table)
+		columns, err := s.repository.GetTableColumns(ctx, desc.Table)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +95,7 @@ func (s *SQLTableUsecase) GetTablesStatement(ctx context.Context, tables []strin
 			return nil, err
 		}
 		tablescript = append(tablescript, TableInfoResponse{
-			TableName:     table,
+			TableName:     desc.PublicName(),
 			Script:        desc.BuildCreateTableStatement(columns),
 			StartSync:     desc.StartSyncAt().UnixMilli(),
 			RetentionDays: desc.SinceDays,
@@ -111,7 +118,7 @@ func (s *SQLTableUsecase) GetTablesInfoV2(ctx context.Context, tables []string) 
 		if err != nil {
 			return nil, err
 		}
-		columns, err := s.repository.GetTableColumns(ctx, table)
+		columns, err := s.repository.GetTableColumns(ctx, desc.Table)
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +171,7 @@ func (s *SQLTableUsecase) GetTablesInfoV2(ctx context.Context, tables []string) 
 		}
 
 		result = append(result, TableInfoV2Response{
-			TableName:     table,
+			TableName:     desc.PublicName(),
 			Columns:       columnInfo,
 			PrimaryKeys:   primaryKeys,
 			Indexes:       indexes,

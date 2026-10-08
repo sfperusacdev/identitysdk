@@ -11,6 +11,9 @@ type TableDescriptor struct {
 	// Physical name of the table in the database
 	Table string `gorm:"primaryKey"`
 
+	// Optional name exposed to synchronization clients. Defaults to Table.
+	Alias string
+
 	// Columns allowed for reading / synchronization
 	Columns []string
 
@@ -37,6 +40,14 @@ type TableDescriptor struct {
 	ReadOnly bool
 
 	WriteOnly bool
+}
+
+// PublicName returns the name used by synchronization clients.
+func (td TableDescriptor) PublicName() string {
+	if alias := strings.TrimSpace(td.Alias); alias != "" {
+		return alias
+	}
+	return td.Table
 }
 
 func (td TableDescriptor) StartSyncAt() time.Time {
@@ -98,7 +109,8 @@ func (tc TableDescriptor) IsReadyOnly(tableColumns []TableColumn) bool {
 func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) string {
 	var builder strings.Builder
 
-	fmt.Fprintf(&builder, "CREATE TABLE IF NOT EXISTS %s(", td.Table)
+	tableName := td.PublicName()
+	fmt.Fprintf(&builder, "CREATE TABLE IF NOT EXISTS %s(", tableName)
 
 	allowedColumns := append([]string{}, td.Columns...)
 	allowedColumns = append(allowedColumns, defaultColumnNames...)
@@ -157,16 +169,12 @@ func (td TableDescriptor) BuildCreateTableStatement(tableColumns []TableColumn) 
 
 	builder.WriteByte(')')
 	if hasDeletedAt {
-		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_deleted_at ON %s(deleted_at)", td.Table, td.Table)
+		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_deleted_at ON %s(deleted_at)", tableName, tableName)
 	}
 	if hasSyncedAt {
-		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_sync_at ON %s(sync_at)", td.Table, td.Table)
+		fmt.Fprintf(&builder, "; CREATE INDEX IF NOT EXISTS idx_%s_sync_at ON %s(sync_at)", tableName, tableName)
 	}
 	return builder.String()
-}
-
-func (td TableDescriptor) isReadOnly() {
-
 }
 
 func NormalizeColumnType(columnType string) string {

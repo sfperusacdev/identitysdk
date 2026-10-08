@@ -74,6 +74,59 @@ func TestSQLTableUsecase_GetTablesInfoV2_ReturnsStructuredTableMetadata(t *testi
 	}, info[0].Columns)
 }
 
+func TestSQLTableUsecase_AliasTranslatesClientNameToPhysicalTable(t *testing.T) {
+	ctx := context.Background()
+	storage := testdb.NewPostgresStorage(t, nil)
+	createSyncItemsTable(t, ctx, storage, "physical_sync_items")
+	insertSyncItem(t, ctx, storage, "physical_sync_items", "acme.server", "server row", 200)
+
+	tableUsecase := newTableUsecase(t, storage, usecase.TableDescriptors{
+		{Table: "physical_sync_items", Alias: "client_items", Columns: []string{"name"}},
+	})
+
+	legacyMetadata, err := tableUsecase.GetTablesStatement(ctx, []string{"client_items"})
+	require.NoError(t, err)
+	require.Len(t, legacyMetadata, 1)
+	require.Equal(t, "client_items", legacyMetadata[0].TableName)
+	require.Contains(t, legacyMetadata[0].Script, "CREATE TABLE IF NOT EXISTS client_items(")
+
+	structuredMetadata, err := tableUsecase.GetTablesInfoV2(ctx, []string{"client_items"})
+	require.NoError(t, err)
+	require.Len(t, structuredMetadata, 1)
+	require.Equal(t, "client_items", structuredMetadata[0].TableName)
+
+	result, err := tableUsecase.SyncTable(ctx, "acme", usecase.TableSyncRequest{
+		TableName: "client_items",
+		SyncAt:    100,
+		Payload: []map[string]any{
+			{"id": "acme.client", "name": "client row"},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, result.Payload, 1)
+	require.Equal(t, "acme.server", result.Payload[0]["id"])
+
+	var count int64
+	require.NoError(t, storage.Conn(ctx).Table("physical_sync_items").Count(&count).Error)
+	require.Equal(t, int64(2), count)
+}
+
+func TestNewSQLTableUsecase_RejectsPublicNameCollisions(t *testing.T) {
+	_, err := usecase.NewSQLTableUsecase(usecase.TableDescriptors{
+		{Table: "physical_one", Alias: "shared_name"},
+		{Table: "physical_two", Alias: "SHARED_NAME"},
+	}, nil)
+	require.ErrorContains(t, err, "nombre público de tabla duplicado")
+}
+
+func TestNewSQLTableUsecase_RejectsAliasCollisionWithDefaultPublicName(t *testing.T) {
+	_, err := usecase.NewSQLTableUsecase(usecase.TableDescriptors{
+		{Table: "physical_one", Alias: "shared_name"},
+		{Table: "shared_name"},
+	}, nil)
+	require.ErrorContains(t, err, "nombre público de tabla duplicado")
+}
+
 func TestSQLTableUsecase_SyncTable_DoesNotReturnIncomingRows(t *testing.T) {
 	ctx := context.Background()
 	storage := testdb.NewPostgresStorage(t, nil)

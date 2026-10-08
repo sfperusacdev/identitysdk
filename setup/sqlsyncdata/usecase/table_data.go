@@ -58,46 +58,46 @@ func (s *SQLTableUsecase) composePrimaryKey(tableName string, primaryKeys []stri
 func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req TableSyncRequest) (*TableSyncResponse, error) {
 	nowMillis := time.Now().UnixMilli()
 
-	tableColumns, err := s.repository.GetTableColumns(ctx, req.TableName)
+	desc, err := s.getDescriptor(req.TableName)
 	if err != nil {
 		return nil, err
 	}
 
-	descriptor, err := s.getDescriptor(req.TableName)
+	tableColumns, err := s.repository.GetTableColumns(ctx, desc.Table)
 	if err != nil {
 		return nil, err
 	}
 
-	var isReadyOnly = descriptor.IsReadyOnly(tableColumns)
-	if len(descriptor.PrimaryKeys) > 0 && !isReadyOnly {
+	var isReadyOnly = desc.IsReadyOnly(tableColumns)
+	if len(desc.PrimaryKeys) > 0 && !isReadyOnly {
 		return nil, errs.BadRequestf(
 			"primary keys configuradas solo se permiten en tablas de solo lectura: %s",
 			req.TableName,
 		)
 	}
 
-	primaryKeys := descriptor.PrimaryKeyColumns(tableColumns)
-	if len(descriptor.PrimaryKeys) == 0 {
-		primaryKeys, err = s.repository.GetTablePrimaryKeys(ctx, req.TableName)
+	primaryKeys := desc.PrimaryKeyColumns(tableColumns)
+	if len(desc.PrimaryKeys) == 0 {
+		primaryKeys, err = s.repository.GetTablePrimaryKeys(ctx, desc.Table)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := validatePrimaryKeysExist(req.TableName, primaryKeys, tableColumns); err != nil {
+	if err := validatePrimaryKeysExist(desc.Table, primaryKeys, tableColumns); err != nil {
 		return nil, err
 	}
 
 	if isReadyOnly && len(req.Payload) > 0 {
 		return nil, errs.BadRequestf(
 			"la tabla %s es de solo lectura y no permite operaciones de escritura",
-			req.TableName,
+			desc.PublicName(),
 		)
 	}
 
 	existingRows := []map[string]any{}
-	if !descriptor.WriteOnly {
+	if !desc.WriteOnly {
 		var err error
-		existingRows, err = s.repository.GetTableData(ctx, domain, *descriptor, req.SyncAt)
+		existingRows, err = s.repository.GetTableData(ctx, domain, *desc, req.SyncAt)
 		if err != nil {
 			return nil, err
 		}
@@ -110,12 +110,12 @@ func (s *SQLTableUsecase) SyncTable(ctx context.Context, domain string, req Tabl
 
 		req.Payload[i]["sync_at"] = nowMillis
 
-		if err := descriptor.ValidateScope(req.Payload[i], primaryKeys, domain); err != nil {
+		if err := desc.ValidateScope(req.Payload[i], primaryKeys, domain); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := s.repository.InsertData(ctx, req.TableName, req.Payload); err != nil {
+	if err := s.repository.InsertData(ctx, desc.Table, req.Payload); err != nil {
 		return nil, err
 	}
 

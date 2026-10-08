@@ -6,7 +6,7 @@ El flujo esta pensado para clientes que mantienen una base local, por ejemplo SQ
 
 ## Conceptos
 
-`table_name` es el nombre fisico de la tabla registrada para sincronizacion.
+`table_name` es el nombre público de la tabla que conoce el cliente. En el descriptor del servidor se configura con `Alias`; si no se define, se usa `Table` como nombre público y físico, conservando el comportamiento actual. El servidor traduce ese nombre a la tabla física configurada para cada operación.
 
 `sync_at` es el checkpoint de sincronizacion en milisegundos Unix. El cliente debe guardar el ultimo checkpoint usado/recibido y enviarlo en la siguiente sincronizacion.
 
@@ -83,6 +83,8 @@ Campos de respuesta:
 
 `table_name`: tabla solicitada.
 
+Si la tabla tiene un `Alias` configurado, el cliente debe solicitar y recibir ese alias en `table_name`. El script v1 crea la tabla local con ese nombre. El nombre físico del servidor no forma parte del contrato del cliente.
+
 `script`: SQL que el cliente puede ejecutar localmente para crear la tabla si no existe. Puede incluir indices.
 
 `start_sync`: timestamp inicial recomendado para la primera sincronizacion.
@@ -137,6 +139,8 @@ Response body:
 Campos de request:
 
 `table_name`: tabla a sincronizar.
+
+Debe ser el nombre público recibido en metadata (el alias cuando está configurado). El backend lo traduce internamente al nombre físico.
 
 `sync_at`: ultimo checkpoint conocido por el cliente. El servidor devolvera registros con `sync_at` mayor a este valor, salvo que la tabla este configurada como full sync.
 

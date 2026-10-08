@@ -135,6 +135,123 @@ func TestBuildCreateTableStatement_ConfiguredPrimaryKeys(t *testing.T) {
 	}
 }
 
+func TestTableDescriptor_PublicName(t *testing.T) {
+	tests := []struct {
+		name string
+		td   TableDescriptor
+		want string
+	}{
+		{
+			name: "uses alias when configured",
+			td:   TableDescriptor{Table: "physical_users", Alias: "client_users"},
+			want: "client_users",
+		},
+		{
+			name: "falls back to physical table",
+			td:   TableDescriptor{Table: "users"},
+			want: "users",
+		},
+		{
+			name: "blank alias falls back to physical table",
+			td:   TableDescriptor{Table: "users", Alias: "  "},
+			want: "users",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.td.PublicName(); got != tt.want {
+				t.Fatalf("PublicName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeColumnType(t *testing.T) {
+	tests := []struct {
+		name       string
+		columnType string
+		want       string
+	}{
+		{
+			name:       "character varying becomes text",
+			columnType: "character varying(255)",
+			want:       "TEXT",
+		},
+		{
+			name:       "numeric becomes real",
+			columnType: "numeric(10,2)",
+			want:       "REAL",
+		},
+		{
+			name:       "other type is unchanged",
+			columnType: "bigint",
+			want:       "bigint",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NormalizeColumnType(tt.columnType); got != tt.want {
+				t.Errorf("NormalizeColumnType(%q) = %q, want %q", tt.columnType, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTableDescriptor_IsReadyOnly(t *testing.T) {
+	tests := []struct {
+		name         string
+		descriptor   TableDescriptor
+		columns      []TableColumn
+		wantReadOnly bool
+	}{
+		{
+			name:         "explicit read only",
+			descriptor:   TableDescriptor{ReadOnly: true},
+			columns:      []TableColumn{{ColumnName: "sync_at"}},
+			wantReadOnly: true,
+		},
+		{
+			name:         "sync column allows writes",
+			descriptor:   TableDescriptor{},
+			columns:      []TableColumn{{ColumnName: "sync_at"}},
+			wantReadOnly: false,
+		},
+		{
+			name:         "missing sync column is read only",
+			descriptor:   TableDescriptor{},
+			columns:      []TableColumn{{ColumnName: "id"}},
+			wantReadOnly: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.descriptor.IsReadyOnly(tt.columns); got != tt.wantReadOnly {
+				t.Errorf("IsReadyOnly() = %t, want %t", got, tt.wantReadOnly)
+			}
+		})
+	}
+}
+
+func TestBuildCreateTableStatement_UsesAliasForClientTable(t *testing.T) {
+	td := TableDescriptor{
+		Table:   "physical_users",
+		Alias:   "client_users",
+		Columns: []string{"sync_at"},
+	}
+	cols := []TableColumn{
+		{ColumnName: "id", ColumnType: "text", ColumnNotNull: "not null", Contype: "primary key"},
+		{ColumnName: "sync_at", ColumnType: "bigint", ColumnNotNull: "not null"},
+	}
+
+	want := "CREATE TABLE IF NOT EXISTS client_users(id text not null, sync_at bigint not null, PRIMARY KEY(id)); CREATE INDEX IF NOT EXISTS idx_client_users_sync_at ON client_users(sync_at)"
+	if got := td.BuildCreateTableStatement(cols); got != want {
+		t.Fatalf("BuildCreateTableStatement() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildCreateTableStatement(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -358,6 +475,26 @@ func TestBuildSelectStatement(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildSelectStatement_UsesPhysicalTableWithAlias(t *testing.T) {
+	td := TableDescriptor{
+		Table:   "physical_users",
+		Alias:   "client_users",
+		Columns: []string{"name"},
+	}
+	cols := []TableColumn{
+		{ColumnName: "id", Contype: "primary key"},
+		{ColumnName: "name"},
+	}
+
+	query, _ := td.BuildSelectStatement(cols, "acme", 0)
+	if !strings.Contains(query, " FROM physical_users ") {
+		t.Fatalf("expected select to target physical table, got: %s", query)
+	}
+	if strings.Contains(query, "client_users") {
+		t.Fatalf("expected select not to use client alias, got: %s", query)
 	}
 }
 
