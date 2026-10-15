@@ -59,7 +59,7 @@ type SincronizarHistorialSituacionInput struct {
 	FechaFin         *types.DateOnly `json:"fecha_fin"`
 }
 
-func (s *ContratosService) SincronizarHistorialSituacion(ctx context.Context, input SincronizarHistorialSituacionInput) error {
+func (s *ContratosService) SincronizarHistorialSituacion(ctx context.Context, inputs []SincronizarHistorialSituacionInput) error {
 	apiurl, err := s.env.GetContratosServiceURL(ctx, s.env.Empresa(ctx))
 	if err != nil {
 		return err
@@ -68,12 +68,12 @@ func (s *ContratosService) SincronizarHistorialSituacion(ctx context.Context, in
 		xreq.WithMethod(http.MethodPut),
 		xreq.WithQueryParam("sucursal", s.env.Sucursal(ctx)),
 		xreq.WithAuthorization(s.env.SessionToken(ctx)),
-		xreq.WithJSONBody(input),
+		xreq.WithJSONBody(inputs),
 	)
 }
 
 // Si el registro ya no existe, la operación también es exitosa.
-func (s *ContratosService) EliminarHistorialSituacionPorOrigen(ctx context.Context, origen, origenCodigo string) error {
+func (s *ContratosService) EliminarHistorialSituacionPorOrigen(ctx context.Context, origen string, codigos []string) error {
 	apiurl, err := s.env.GetContratosServiceURL(ctx, s.env.Empresa(ctx))
 	if err != nil {
 		return err
@@ -83,9 +83,9 @@ func (s *ContratosService) EliminarHistorialSituacionPorOrigen(ctx context.Conte
 		xreq.WithQueryParam("sucursal", s.env.Sucursal(ctx)),
 		xreq.WithAuthorization(s.env.SessionToken(ctx)),
 		xreq.WithJSONBody(struct {
-			Origen       string `json:"origen"`
-			OrigenCodigo string `json:"origen_codigo"`
-		}{Origen: origen, OrigenCodigo: origenCodigo}),
+			Origen  string   `json:"origen"`
+			Codigos []string `json:"codigos"`
+		}{Origen: origen, Codigos: codigos}),
 	)
 }
 
