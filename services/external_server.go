@@ -2,13 +2,14 @@ package services
 
 import (
 	"context"
-	"errors"
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
+	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 )
 
-var ErrNotFound = errors.New("the record you are looking for was not found")
+// Deprecated: use contratos.ErrNotFound instead.
+var ErrNotFound = contratos.ErrNotFound
 
 type ExternalBridgeService struct {
 	configProvider configs.GeneralServiceConfigProvider

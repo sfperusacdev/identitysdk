@@ -3,32 +3,18 @@ package services
 import (
 	"context"
 	"strings"
-	"time"
 
+	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
-type UserAccount struct {
-	Code              string     `json:"code"`
-	Username          string     `json:"username"`
-	CompanyCode       string     `json:"company_code"`
-	FullName          string     `json:"full_name"`
-	IsDisabled        bool       `json:"is_disabled"`
-	PasswordAttempts  int64      `json:"password_attempts"`
-	ReferenceCode     string     `json:"reference_code"`
-	ExternalReference string     `json:"external_reference"`
-	LastLogin         *time.Time `json:"last_login"`
-	CreatedAt         time.Time  `json:"created_at"`
-	CreatedBy         string     `json:"created_by"`
-	WriteAt           time.Time  `json:"write_at"`
-	WriteBy           string     `json:"write_by"`
-}
+// Deprecated: use identity.UserAccount instead.
+type UserAccount = bridgeidentity.UserAccount
 
-type UserAccountWithSubordinates struct {
-	UserAccount
-	Subordinates []UserAccount `json:"subordinates"`
-}
+// Deprecated: use identity.UserAccountWithSubordinates instead.
+type UserAccountWithSubordinates = bridgeidentity.UserAccountWithSubordinates
 
+// Deprecated: use bridge.Identity.GetUsuarios instead.
 func (s *ExternalBridgeService) GetUsuarios(ctx context.Context, domain string) ([]UserAccountWithSubordinates, error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {
@@ -50,12 +36,10 @@ func (s *ExternalBridgeService) GetUsuarios(ctx context.Context, domain string) 
 	return response.Data, nil
 }
 
-type GrupoWithUsers struct {
-	Code        string        `json:"code"`
-	Description string        `json:"description"`
-	Users       []UserAccount `json:"users"`
-}
+// Deprecated: use identity.GrupoWithUsers instead.
+type GrupoWithUsers = bridgeidentity.GrupoWithUsers
 
+// Deprecated: use bridge.Identity.GetGrupos instead.
 func (s *ExternalBridgeService) GetGrupos(ctx context.Context, domain string) ([]GrupoWithUsers, error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {

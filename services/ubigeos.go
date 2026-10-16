@@ -6,31 +6,14 @@ import (
 	"log/slog"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/sark_services/global"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
-type Ubigeo struct {
-	Codigo                   string  `gorm:"primaryKey" json:"codigo"`
-	DepartamentoIneiCodigo   *string `json:"departamento_inei_codigo"`
-	DepartamentoIneiNombre   *string `json:"departamento_inei_nombre"`
-	ProvinciaIneiCodigo      *string `json:"provincia_inei_codigo"`
-	ProvinciaIneiNombre      *string `json:"provincia_inei_nombre"`
-	DistritoIneiCodigo       *string `json:"distrito_inei_codigo"`
-	DistritoIneiNombre       *string `json:"distrito_inei_nombre"`
-	DepartamentoReniecCodigo *string `json:"departamento_reniec_codigo"`
-	DepartamentoReniecNombre *string `json:"departamento_reniec_nombre"`
-	ProvinciaReniecCodigo    *string `json:"provincia_reniec_codigo"`
-	ProvinciaReniecNombre    *string `json:"provincia_reniec_nombre"`
-	DistritoReniecCodigo     *string `json:"distrito_reniec_codigo"`
-	DistritoReniecNombre     *string `json:"distrito_reniec_nombre"`
-	DepartamentoSunatCodigo  *string `json:"departamento_sunat_codigo"`
-	DepartamentoSunatNombre  *string `json:"departamento_sunat_nombre"`
-	ProvinciaSunatCodigo     *string `json:"provincia_sunat_codigo"`
-	ProvinciaSunatNombre     *string `json:"provincia_sunat_nombre"`
-	DistritoSunatCodigo      *string `json:"distrito_sunat_codigo"`
-	DistritoSunatNombre      *string `json:"distrito_sunat_nombre"`
-}
+// Deprecated: use global.Ubigeo instead.
+type Ubigeo = global.Ubigeo
 
+// Deprecated: use bridge.Global.GetUbigeos instead.
 func (s *ExternalBridgeService) GetUbigeos(ctx context.Context) ([]Ubigeo, error) {
 	company, token := s.readCompanyAndToken(ctx)
 	baseURL, err := identitysdk.GetGeneralServiceURL(ctx, company)
@@ -56,14 +39,19 @@ func (s *ExternalBridgeService) GetUbigeos(ctx context.Context) ([]Ubigeo, error
 	return response.Data, nil
 }
 
-type UbigeoSource string
+// Deprecated: use global.UbigeoSource instead.
+type UbigeoSource = global.UbigeoSource
 
 const (
-	UbigeoSourceINEI   UbigeoSource = "inei"
-	UbigeoSourceRENIEC UbigeoSource = "reniec"
-	UbigeoSourceSUNAT  UbigeoSource = "sunat"
+	// Deprecated: use global.UbigeoSourceINEI instead.
+	UbigeoSourceINEI = global.UbigeoSourceINEI
+	// Deprecated: use global.UbigeoSourceRENIEC instead.
+	UbigeoSourceRENIEC = global.UbigeoSourceRENIEC
+	// Deprecated: use global.UbigeoSourceSUNAT instead.
+	UbigeoSourceSUNAT = global.UbigeoSourceSUNAT
 )
 
+// Deprecated: use bridge.Global.SearchUbigeo instead.
 func (s *ExternalBridgeService) SearchUbigeo(
 	ctx context.Context,
 	source UbigeoSource,

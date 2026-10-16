@@ -10,6 +10,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
+// Deprecated: use bridge.Global.GetWorkflow instead.
 func (s *ExternalBridgeService) GetWorkflow(ctx context.Context, doc string) (*workflows_entities.Workflow, error) {
 	company, token := s.readCompanyAndToken(ctx)
 	baseURL, err := identitysdk.GetGeneralServiceURL(ctx, company)

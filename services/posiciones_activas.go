@@ -8,6 +8,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
+// Deprecated: use bridge.Contratos.GetPosicionesActivas instead.
 func (s *ExternalBridgeService) GetPosicionesActivas(ctx context.Context) ([]string, error) {
 	var company, token = s.readCompanyAndToken(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)

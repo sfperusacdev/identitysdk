@@ -9,6 +9,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
+// Deprecated: use bridge.Contratos.GetTrabajadorPosicion instead.
 func (s *ExternalBridgeService) GetTrabajadorPosicion(ctx context.Context, codigo string) (string, error) {
 	var company, token = s.readCompanyAndToken(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)

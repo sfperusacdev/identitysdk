@@ -7,15 +7,14 @@ import (
 
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 	"github.com/sfperusacdev/identitysdk/xreq"
 )
 
-type PlanillaDto struct {
-	Codigo                      string `json:"codigo"`
-	Descripcion                 string `json:"descripcion"`
-	DefaultGrupoProvisionCodigo string `json:"default_grupo_provision_codigo"`
-}
+// Deprecated: use contratos.PlanillaDto instead.
+type PlanillaDto = contratos.PlanillaDto
 
+// Deprecated: use bridge.Contratos.GetPlanillas instead.
 func (s *ExternalBridgeService) GetPlanillas(ctx context.Context) ([]PlanillaDto, error) {
 	var company, token = s.readCompanyAndToken(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)
@@ -38,6 +37,7 @@ func (s *ExternalBridgeService) GetPlanillas(ctx context.Context) ([]PlanillaDto
 	return apiresponse.Data, nil
 }
 
+// Deprecated: use bridge.Contratos.GetPlanillaTrabajador instead.
 func (s *ExternalBridgeService) GetPlanillaTrabajador(ctx context.Context, trabajadorCodigo string) (*entities.TrabajadorPlanilla, error) {
 	var company, token = s.readCompanyAndToken(ctx)
 	baseurl, err := identitysdk.GetContratosServiceURL(ctx, company)

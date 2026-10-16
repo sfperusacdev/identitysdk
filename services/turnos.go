@@ -11,6 +11,7 @@ import (
 	"github.com/user0608/goones/types"
 )
 
+// Deprecated: use bridge.Asistencia.Turnos instead.
 func (s *ExternalBridgeService) Turnos(ctx context.Context) ([]turnos.Turno, error) {
 	company, token := s.readCompanyAndToken(ctx)
 	baseURL, err := identitysdk.GetAsistenciaServiceURL(ctx, company)
