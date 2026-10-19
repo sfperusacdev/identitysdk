@@ -1,6 +1,9 @@
 package identitysdk
 
-import "context"
+import (
+	"context"
+	"slices"
+)
 
 func IsAdmin(ctx context.Context) bool { return HasPerm(ctx, "admin") }
 
@@ -24,10 +27,9 @@ func HasPermission(ctx context.Context, permission, companyBranch string) bool {
 	}
 	for _, perm := range session.Permissions {
 		if perm.ID == permission {
-			for _, b := range perm.CompanyBrances {
-				if b == companyBranch {
-					return true
-				}
+			if slices.Contains(perm.CompanyBrances, "*") ||
+				slices.Contains(perm.CompanyBrances, companyBranch) {
+				return true
 			}
 		}
 	}
