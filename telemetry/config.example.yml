@@ -1,0 +1,13 @@
+telemetry:
+  enabled: true # Por defecto: false.
+  # environment: ""
+  otlp:
+    endpoint: "http://localhost:4318"
+    # protocol: http/protobuf
+  # traces:
+  #   enabled: true
+  #   sample_ratio: 0.1
+  # logs:
+  #   level: info
+  #   format: json
+  #   export_otlp: true

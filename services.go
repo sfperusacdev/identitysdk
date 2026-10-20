@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/sfperusacdev/identitysdk/telemetry"
 )
 
 const (
@@ -68,7 +70,7 @@ func GetServiceURL(ctx context.Context, companyCode string, resourceCode string)
 	}
 
 	req.URL.RawQuery = queryParams.Encode()
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
 		return "", err
 	}

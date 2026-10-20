@@ -2,7 +2,7 @@ package httpapi
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	"log/slog"
 	"net/http"
@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/permissions"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"go.uber.org/fx"
 )
 
@@ -45,13 +46,20 @@ func newEchoServer(
 	e.HideBanner = true
 
 	// Middleware global
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "time=${time_unix}, method=${method}, uri=${uri}, status=${status}, ip=${remote_ip}, latency=${latency_human}\n",
-		Skipper: func(c echo.Context) bool {
-			return strings.Contains(c.Path(), "/api/v1/_/system_properties")
+	if telemetryService := telemetry.Current(); telemetryService.Enabled() {
+		e.Use(telemetryService.HTTPMiddleware())
+	}
+	e.Use(telemetry.AccessLogger)
+	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
+		DisableStackAll: true,
+		LogErrorFunc: func(c echo.Context, err error, stack []byte) error {
+			// Panic values may contain request secrets. Retain the failure
+			// location without exporting the raw panic value.
+			slog.ErrorContext(c.Request().Context(), "HTTP panic recovered",
+				"error_type", fmt.Sprintf("%T", err), "stack", string(stack))
+			return err
 		},
 	}))
-	e.Use(middleware.Recover())
 
 	for _, route := range listRoutes {
 		middlewares := buildMiddlewares(
@@ -136,6 +144,17 @@ func buildMiddlewares(
 	if r, ok := route.(MiddlewaresProvider); ok {
 		middlewares = append(middlewares, r.GetMiddlewares()...)
 	}
+	// Run after authentication and branch validation, never trusting raw headers
+	// or query parameters to populate diagnostic tenant attributes.
+	middlewares = append(middlewares, func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := c.Request().Context()
+			empresa, sucursal := identitysdk.Empresa_Sucursal(ctx)
+			ctx = telemetry.WithTenantAttributes(ctx, empresa, sucursal)
+			c.SetRequest(c.Request().WithContext(ctx))
+			return next(c)
+		}
+	})
 
 	return middlewares
 }

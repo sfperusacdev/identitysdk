@@ -10,6 +10,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk/entities"
 	apikeycache "github.com/sfperusacdev/identitysdk/internal/apikey_cache"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 	"github.com/user0608/ifdevmode"
 )
@@ -59,7 +60,7 @@ func ValidateApiKey(ctx context.Context, apikey string) (*entities.ApikeyData, e
 
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
 		slog.Error("failed to send API key validation request", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect("Auth server no responde")

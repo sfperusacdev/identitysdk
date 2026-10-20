@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/sfperusacdev/identitysdk/telemetry"
 )
 
 func IdentityServerCheckHealth() error {
@@ -28,7 +30,7 @@ func IdentityServerCheckHealthWithContext(ctx context.Context) error {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
 		slog.Error("failed to send health check request", "url", healthURL, "error", err)
 		return fmt.Errorf("failed to send request: %w", err)

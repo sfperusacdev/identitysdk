@@ -14,6 +14,7 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/sfperusacdev/identitysdk/services"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 )
 
@@ -116,7 +117,7 @@ func (s *DocxTemplateToPdfService) GeneratePDF(ctx context.Context, templateByte
 	}
 	req.Header.Set("Content-Type", bodyWriter.FormDataContentType())
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := telemetry.DoHTTP(req)
 	if err != nil {
 		return nil, errs.InternalError(err, "error al enviar request al servicio de PDF")
 	}

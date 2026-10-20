@@ -15,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/pressly/goose/v3"
 	"github.com/sfperusacdev/identitysdk"
@@ -43,12 +44,14 @@ import (
 	"github.com/sfperusacdev/identitysdk/utils/sql/sqlviews"
 
 	identitysdk_services "github.com/sfperusacdev/identitysdk/services"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/user0608/ifdevmode"
 	"github.com/user0608/numeroaletras"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"gopkg.in/yaml.v2"
 )
 
@@ -518,22 +521,37 @@ func (s *Service) publishServiceDetails(c configs.GeneralServiceConfigProvider) 
 }
 
 func (s *Service) Run(opts ...fx.Option) error {
-	s.Command.Run = func(cmd *cobra.Command, args []string) {
-		connectionManager, err := s.options.storageManagerProvider()
-		if err != nil {
-			slog.Error("Error opening database connection", "error", err)
-			os.Exit(1)
-		}
+	s.Command.RunE = func(cmd *cobra.Command, args []string) error {
 		gsc, _, vipper, err := s.configs()
 		if err != nil {
-			slog.Error("Error loading configs", "error", err)
-			os.Exit(1)
+			return err
+		}
+		telemetryConfig, err := telemetry.Read(vipper)
+		if err != nil {
+			return err
+		}
+		telemetryService, err := telemetry.NewTelemetryService(cmd.Context(), telemetryConfig, telemetry.ServiceInfo{Name: gsc.ServiceID(), Version: s.version})
+		if err != nil {
+			return err
+		}
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := telemetryService.Shutdown(ctx); err != nil {
+				slog.Warn("telemetry shutdown incomplete", "error_type", fmt.Sprintf("%T", err))
+			}
+		}()
+		connectionManager, err := s.options.storageManagerProvider()
+		if err != nil {
+			return fmt.Errorf("open database connection: %w", err)
+		}
+		if err := telemetryService.InstrumentDB(connectionManager.Conn(cmd.Context())); err != nil {
+			return err
 		}
 
 		automigration, err := cmd.Flags().GetBool("auto")
 		if err != nil {
-			slog.Error("Failed to read 'auto' flag", "error", err)
-			os.Exit(1)
+			return err
 		}
 		if automigration && s.options.migrationsDir != nil {
 			ctx := context.Background()
@@ -543,31 +561,26 @@ func (s *Service) Run(opts ...fx.Option) error {
 			if gormConn != nil {
 				conn, err := gormConn.DB()
 				if err != nil {
-					slog.Error("Failed to retrieve database connection", "error", err)
-					os.Exit(1)
+					return err
 				}
 
 				viewsFiles, err := s.getDB_views(s.options.migrationsDir)
 				if err != nil {
-					slog.Error("failed to load view definitions", "error", err)
-					os.Exit(1)
+					return err
 				}
 
 				if err := s.drop_views(conn, viewsFiles); err != nil {
-					slog.Error("failed to drop views", "error", err)
-					os.Exit(1)
+					return err
 				}
 
 				slog.Info("Running database migrations...")
 				err = goose.RunWithOptionsContext(ctx, "up", conn, "migrations", []string{})
 				if err != nil {
-					slog.Error("Error running migrations", "error", err)
-					os.Exit(1)
+					return err
 				}
 
 				if err := s.recovery_view(conn, viewsFiles); err != nil {
-					slog.Error("failed to recreate views", "error", err)
-					os.Exit(1)
+					return err
 				}
 
 				slog.Info("Migrations completed successfully")
@@ -578,13 +591,16 @@ func (s *Service) Run(opts ...fx.Option) error {
 		if s.options.propertiesDir != nil {
 			entries, err := s.readProperties(s.options.propertiesDir)
 			if err != nil {
-				slog.Error("Failed to retrieve system properties", "error", err)
-				os.Exit(1)
+				return err
 			}
 			systemProperties = entries
 		}
 
-		opts = append([]fx.Option{fx.Invoke(s.setupIdentity)}, opts...)
+		opts = append([]fx.Option{
+			fx.Supply(telemetryService), telemetry.Module,
+			fx.WithLogger(func() fxevent.Logger { return &fxevent.SlogLogger{Logger: slog.Default()} }),
+			fx.Invoke(s.setupIdentity),
+		}, opts...)
 		opts = append(
 			opts,
 			fx.Supply(systemProperties),
@@ -643,8 +659,24 @@ func (s *Service) Run(opts ...fx.Option) error {
 			fx.Invoke(s.publishServiceDetails, identitygrpc.StartServer, httpapi.StartWebServer),
 		)
 		app := fx.New(opts...)
-		app.Run()
-		slog.Info("Application stopped")
+		startCtx, cancelStart := context.WithTimeout(cmd.Context(), app.StartTimeout())
+		err = app.Start(startCtx)
+		cancelStart()
+		if err != nil {
+			return err
+		}
+		select {
+		case <-app.Done():
+		case <-cmd.Context().Done():
+		}
+		stopCtx, cancelStop := context.WithTimeout(context.Background(), app.StopTimeout())
+		defer cancelStop()
+		logger := slog.Default()
+		if err := app.Stop(stopCtx); err != nil {
+			return err
+		}
+		logger.Info("Application stopped")
+		return nil
 	}
 	if err := s.Command.Execute(); err != nil {
 		slog.Error("command execution failed", "error", err)

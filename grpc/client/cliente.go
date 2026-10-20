@@ -11,6 +11,7 @@ import (
 	"github.com/sfperusacdev/identitysdk"
 	"github.com/sfperusacdev/identitysdk/configs"
 	identitygrpc "github.com/sfperusacdev/identitysdk/grpc"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/sfperusacdev/identitysdk/xreq"
 	"go.uber.org/fx"
 	gogrpc "google.golang.org/grpc"
@@ -114,6 +115,7 @@ func (g *GrpcClient) Connection(ctx context.Context, resourceCode string) (*gogr
 
 	conn, err = gogrpc.NewClient(
 		grpcURL,
+		gogrpc.WithStatsHandler(telemetry.GRPCClientHandler()),
 		gogrpc.WithTransportCredentials(insecure.NewCredentials()),
 		gogrpc.WithUnaryInterceptor(g.unaryContextInterceptor),
 		gogrpc.WithStreamInterceptor(g.streamContextInterceptor),

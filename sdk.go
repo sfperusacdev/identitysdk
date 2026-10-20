@@ -12,6 +12,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/entities"
 	"github.com/user0608/goones/answer"
 	"github.com/user0608/goones/errs"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type keyType string
@@ -425,6 +426,11 @@ func Token(c context.Context) string {
 
 func CloneContext(ctx context.Context) context.Context {
 	newCtx := context.Background()
+	// Preserve correlation without retaining cancellation, arbitrary request
+	// values or a live span. Background work can create a child span as needed.
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		newCtx = trace.ContextWithSpanContext(newCtx, sc)
+	}
 
 	if values, ok := JwtClaims(ctx); ok {
 		newCtx = context.WithValue(newCtx, jwt_claims_key, values)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/gommon/color"
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"go.uber.org/fx"
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -43,6 +44,7 @@ func AsService(fn any) any {
 
 func NewServer(services []GrpcServiceRegister) *gogrpc.Server {
 	server := gogrpc.NewServer(
+		gogrpc.StatsHandler(telemetry.GRPCServerHandler()),
 		gogrpc.UnaryInterceptor(accessTokenUnaryInterceptor),
 		gogrpc.StreamInterceptor(accessTokenStreamInterceptor),
 	)
@@ -127,7 +129,8 @@ func contextWithAccessTokenMetadata(ctx context.Context) (context.Context, error
 		}
 	}
 
-	return newCtx, nil
+	empresa, sucursal := identitysdk.Empresa_Sucursal(newCtx)
+	return telemetry.WithTenantAttributes(newCtx, empresa, sucursal), nil
 }
 
 func firstMetadataValue(md metadata.MD, key string) string {
@@ -166,7 +169,17 @@ func StartServer(lc fx.Lifecycle, server *gogrpc.Server, address ServeAddress) {
 		},
 		OnStop: func(ctx context.Context) error {
 			slog.Info("Shutting down gRPC server")
-			server.GracefulStop()
+			done := make(chan struct{})
+			go func() {
+				server.GracefulStop()
+				close(done)
+			}()
+			select {
+			case <-done:
+			case <-ctx.Done():
+				server.Stop()
+				return ctx.Err()
+			}
 			slog.Info("gRPC server stopped successfully")
 			return nil
 		},

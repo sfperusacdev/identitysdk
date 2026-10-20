@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 )
 
@@ -143,7 +144,7 @@ func SetDefaultXOrigin(xorigin string) { defaultXOrigin = xorigin }
 func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...RequestOption) error {
 	if baseUrl == "" {
 		err := errors.New("base URL cannot be empty")
-		slog.Error(
+		slog.ErrorContext(ctx,
 			"validating base URL",
 			"error", err,
 		)
@@ -157,7 +158,7 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 	}
 	endpoint, err := url.JoinPath(baseUrl, endpointPath)
 	if err != nil {
-		slog.Error(
+		slog.ErrorContext(ctx,
 			"joining base server url with `"+endpointPath+"`",
 			"error", err,
 			"baseurl", baseUrl,
@@ -174,7 +175,7 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 	}
 	req, err := http.NewRequestWithContext(ctx, options.Method, endpoint, options.RequestBody.Reader)
 	if err != nil {
-		slog.Error(
+		slog.ErrorContext(ctx,
 			"error creating request",
 			"error", err,
 			"endpoint", endpoint,
@@ -202,9 +203,9 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 		}
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
-		slog.Error("error on request", "error", err, "endpoint", endpoint, "method", options.Method)
+		slog.ErrorContext(ctx, "error on request", "error", err, "endpoint", endpoint, "method", options.Method)
 		return errs.InternalError(err, "falló la petición %s a %s", options.Method, endpoint)
 	}
 	defer res.Body.Close()
@@ -224,10 +225,9 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			message = apiResponse.Message
 		}
 
-		slog.Error(
+		slog.ErrorContext(ctx,
 			"service response error",
 			"status", res.StatusCode,
-			"message", message,
 			"endpoint", endpoint,
 			"method", options.Method,
 		)
@@ -241,7 +241,7 @@ func MakeRequest(ctx context.Context, baseUrl, endpointPath string, opts ...Requ
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
-			slog.Error("error json decoding response", "error", err, "basepath", baseUrl, "path", endpointPath)
+			slog.ErrorContext(ctx, "error json decoding response", "error", err, "basepath", baseUrl, "path", endpointPath)
 			return errs.InternalError(
 				err,
 				"falló la decodificación de la respuesta JSON de %s%s",

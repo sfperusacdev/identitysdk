@@ -10,6 +10,7 @@ import (
 
 	"github.com/sfperusacdev/identitysdk/entities"
 	sessioncache "github.com/sfperusacdev/identitysdk/internal/session_cache"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 	"github.com/user0608/ifdevmode"
 )
@@ -62,7 +63,7 @@ func ValidateToken(ctx context.Context, token string) (*entities.JwtData, error)
 
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
 		slog.Error("failed to send token validation request", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect("Auth server no responde")

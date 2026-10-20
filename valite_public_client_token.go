@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/sfperusacdev/identitysdk/entities"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 )
 
@@ -37,7 +38,7 @@ func ValidatePublicClientToken(ctx context.Context, token string) (*entities.Jwt
 
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := telemetry.DoHTTP(req)
 	if err != nil {
 		slog.Error("failed to send token validation request", "url", hostURL, "error", err)
 		return nil, errs.InternalErrorDirect("Auth server no responde")

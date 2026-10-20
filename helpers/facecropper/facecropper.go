@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/sfperusacdev/identitysdk/services"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/user0608/goones/errs"
 )
 
@@ -78,7 +79,7 @@ func (s *FaceCropService) ProcessImage(ctx context.Context, imageBytes []byte) (
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := telemetry.DoHTTP(req)
 	if err != nil {
 		return nil, errs.InternalError(err, "error al conectar con facecrop")
 	}
