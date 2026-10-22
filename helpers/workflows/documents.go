@@ -139,10 +139,7 @@ func (m *DocumentWorkflowStateManager) ChangeState(ctx context.Context, req Chan
 		return nil, errs.BadRequestf("todos los documentos deben tener el mismo estado inicial")
 	}
 	if !req.AllowPartial && len(listErrors) > 0 {
-		if len(req.Targets) == 1 {
-			return nil, errs.BadRequestDirect(listErrors[0].Error())
-		}
-		return nil, errs.BadRequestf("no todos los documentos pueden ser actualizados")
+		return nil, errs.BadRequestDirect(listErrors[0].Error())
 	}
 	if len(affectedTargets) == 0 {
 		return []string{}, nil
