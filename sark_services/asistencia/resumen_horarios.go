@@ -5,9 +5,14 @@ import (
 	"time"
 
 	asistenciapb "github.com/sfperusacdev/identitysdk/grpc/gen/asistencia"
+	"github.com/sfperusacdev/identitysdk/telemetry"
 	"github.com/sfperusacdev/identitysdk/utils/ranges"
 	"github.com/shopspring/decimal"
 	"github.com/user0608/goones/types"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 type ResultTrabajadoresHorarios struct {
@@ -51,14 +56,34 @@ func (r RangoDescanso) StartTime() time.Time { return r.Inicio }
 func (r RangoDescanso) EndTime() time.Time { return r.Fin }
 
 func (s *AsistenciaService) ResumenHorarios_RangoJornales(ctx context.Context,
-	desde, hasta types.DateOnly, trabajadores []string) ([]ResultTrabajadoresHorarios, error) {
-	results, err := s.asistenciaGrpc.ListarTrabajadoresHorarios(ctx, &asistenciapb.ListarTrabajadoresHorariosRequest{
+	desde, hasta types.DateOnly, trabajadores []string) (_ []ResultTrabajadoresHorarios, err error) {
+	tracer := telemetry.Current().TracerProvider().Tracer("identitysdk/sark_services/asistencia")
+	ctx, span := tracer.Start(ctx, "asistencia.resumen_horarios")
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "")
+		}
+		span.End()
+	}()
+	span.SetAttributes(attribute.Int("horarios.trabajadores_solicitados", len(trabajadores)))
+	rpcCtx, rpcSpan := tracer.Start(ctx, "asistencia.resumen_horarios.rpc")
+	results, err := s.asistenciaGrpc.ListarTrabajadoresHorarios(rpcCtx, &asistenciapb.ListarTrabajadoresHorariosRequest{
 		FechaInicio:         desde.String(),
 		FechaFin:            hasta.String(),
 		TrabajadoresCodigos: trabajadores,
-	})
+	}, grpc.MaxCallRecvMsgSize(16*1024*1024))
+	if err != nil {
+		rpcSpan.SetStatus(codes.Error, "")
+	}
+	rpcSpan.End()
 	if err != nil {
 		return nil, err
+	}
+	_, conversionSpan := tracer.Start(ctx, "asistencia.resumen_horarios.convertir")
+	defer conversionSpan.End()
+	if span.IsRecording() {
+		span.SetAttributes(attribute.Int("horarios.respuesta_bytes", proto.Size(results)),
+			attribute.Int("horarios.trabajadores_devueltos", len(results.GetData())))
 	}
 
 	response := make([]ResultTrabajadoresHorarios, 0, len(results.GetData()))
@@ -71,6 +96,7 @@ func (s *AsistenciaService) ResumenHorarios_RangoJornales(ctx context.Context,
 		for _, fecha := range result.GetFechas() {
 			horasRegularesDia, err := decimal.NewFromString(fecha.GetHorasRegularesDia())
 			if err != nil {
+				conversionSpan.SetStatus(codes.Error, "")
 				return nil, err
 			}
 
