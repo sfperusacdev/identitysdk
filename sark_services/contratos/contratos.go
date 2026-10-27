@@ -2,6 +2,8 @@ package contratos
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
@@ -76,6 +78,31 @@ type ResumenTrabajadorFotocheckDTO struct {
 	FechaInicioUltimoContrato *time.Time `json:"fecha_inicio_ultimo_contrato"`
 	FechaFinUltimoContrato    *time.Time `json:"fecha_fin_ultimo_contrato"`
 	FechaIngreso              *time.Time `json:"fecha_ingreso"`
+}
+
+func (d *ResumenTrabajadorFotocheckDTO) UnmarshalJSON(data []byte) error {
+	type dtoJSON ResumenTrabajadorFotocheckDTO
+	decoded := dtoJSON(*d)
+	var response = struct {
+		*dtoJSON
+		FechaIngreso *string `json:"fecha_ingreso"`
+	}{dtoJSON: &decoded}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return err
+	}
+	decoded.FechaIngreso = nil
+	if response.FechaIngreso != nil && *response.FechaIngreso != "" {
+		fecha, err := time.Parse(time.RFC3339Nano, *response.FechaIngreso)
+		if err != nil {
+			fecha, err = time.Parse(time.DateOnly, *response.FechaIngreso)
+		}
+		if err != nil {
+			return fmt.Errorf("fecha_ingreso inválida %q: %w", *response.FechaIngreso, err)
+		}
+		decoded.FechaIngreso = &fecha
+	}
+	*d = ResumenTrabajadorFotocheckDTO(decoded)
+	return nil
 }
 
 // ResumenTrabajadoresFotocheck obtiene los trabajadores para el listado de
