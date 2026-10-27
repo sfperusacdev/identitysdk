@@ -71,7 +71,7 @@ func (s *AsistenciaService) ResumenHorarios_RangoJornales(ctx context.Context,
 		FechaInicio:         desde.String(),
 		FechaFin:            hasta.String(),
 		TrabajadoresCodigos: trabajadores,
-	}, grpc.MaxCallRecvMsgSize(16*1024*1024))
+	}, grpc.MaxCallRecvMsgSize(64*1024*1024))
 	if err != nil {
 		rpcSpan.SetStatus(codes.Error, "")
 	}

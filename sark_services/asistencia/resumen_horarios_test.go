@@ -33,7 +33,7 @@ func (s resumenHorariosClientStub) ListarTrabajadoresHorarios(ctx context.Contex
 	}
 	found := false
 	for _, opt := range opts {
-		if size, ok := opt.(grpc.MaxRecvMsgSizeCallOption); ok && size.MaxRecvMsgSize == 16*1024*1024 {
+		if size, ok := opt.(grpc.MaxRecvMsgSizeCallOption); ok && size.MaxRecvMsgSize == 64*1024*1024 {
 			found = true
 		}
 	}
