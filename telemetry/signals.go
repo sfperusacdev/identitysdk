@@ -58,7 +58,7 @@ func newLoggerProvider(ctx context.Context, c Config, res *resource.Resource) (*
 		return nil, nil, fmt.Errorf("telemetry log exporter: %w", err)
 	}
 	provider := sdklog.NewLoggerProvider(sdklog.WithResource(res), sdklog.WithProcessor(
-		sdklog.NewBatchProcessor(exporter, sdklog.WithMaxQueueSize(2048), sdklog.WithExportTimeout(5*time.Second)),
+		sdklog.NewBatchProcessor(signalLogExporter{Exporter: exporter}, sdklog.WithMaxQueueSize(2048), sdklog.WithExportTimeout(5*time.Second)),
 	))
 	bridge := otelslog.NewHandler("github.com/sfperusacdev/identitysdk",
 		otelslog.WithLoggerProvider(provider), otelslog.WithSource(false))
@@ -93,8 +93,29 @@ func (e safeSpanExporter) ExportSpans(ctx context.Context, spans []sdktrace.Read
 	for i, span := range spans {
 		safe[i] = safeSpan{ReadOnlySpan: span}
 	}
-	return e.SpanExporter.ExportSpans(ctx, safe)
+	if err := e.SpanExporter.ExportSpans(ctx, safe); err != nil {
+		return &signalExportError{signal: "traces", err: err}
+	}
+	return nil
 }
+
+type signalLogExporter struct{ sdklog.Exporter }
+
+func (e signalLogExporter) Export(ctx context.Context, records []sdklog.Record) error {
+	if err := e.Exporter.Export(ctx, records); err != nil {
+		return &signalExportError{signal: "logs", err: err}
+	}
+	return nil
+}
+
+type signalExportError struct {
+	signal string
+	err    error
+}
+
+func (e *signalExportError) Error() string { return e.signal + " export failed: " + e.err.Error() }
+
+func (e *signalExportError) Unwrap() error { return e.err }
 
 type safeSpan struct{ sdktrace.ReadOnlySpan }
 

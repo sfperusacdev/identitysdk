@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -121,7 +123,55 @@ func newExportErrorHandler(stdout io.Writer) otel.ErrorHandler {
 		now := time.Now().Unix()
 		last := lastWarning.Load()
 		if now-last >= 60 && lastWarning.CompareAndSwap(last, now) {
-			diagnostic.Warn("telemetry export failed", "error_type", fmt.Sprintf("%T", err))
+			attrs := []any{"error_type", fmt.Sprintf("%T", err)}
+			var signalErr *signalExportError
+			if errors.As(err, &signalErr) {
+				attrs = append(attrs, "signal", signalErr.signal)
+			}
+			if status := exportHTTPStatus(err); status != "" {
+				attrs = append(attrs, "reason", "http_status", "http_status", status)
+			} else if errors.Is(err, context.DeadlineExceeded) {
+				attrs = append(attrs, "reason", "timeout")
+			} else {
+				var netErr net.Error
+				if errors.As(err, &netErr) {
+					if netErr.Timeout() {
+						attrs = append(attrs, "reason", "timeout")
+					} else {
+						attrs = append(attrs, "reason", "network")
+					}
+				} else {
+					attrs = append(attrs, "reason", "other")
+				}
+			}
+			diagnostic.Warn("telemetry export failed", attrs...)
 		}
 	})
+}
+
+// OTLP HTTP exporters include the status in their non-retryable error prefix.
+// Never log the full error: its URL or server response may contain secrets.
+var exportStatusPrefix = regexp.MustCompile(`^failed to send(?: logs)? to https?://\S+: ([1-5][0-9]{2}) `)
+
+func exportHTTPStatus(err error) string {
+	if err == nil {
+		return ""
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, child := range joined.Unwrap() {
+			if status := exportHTTPStatus(child); status != "" {
+				return status
+			}
+		}
+		return ""
+	}
+	if child := errors.Unwrap(err); child != nil {
+		if status := exportHTTPStatus(child); status != "" {
+			return status
+		}
+	}
+	if matches := exportStatusPrefix.FindStringSubmatch(err.Error()); matches != nil {
+		return matches[1]
+	}
+	return ""
 }

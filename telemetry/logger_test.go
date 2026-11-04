@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -75,6 +78,59 @@ func TestNewTelemetryLoggerStdoutOnly(t *testing.T) {
 			logger.Log(context.Background(), slog.LevelInfo, "visible on stdout")
 			if !strings.Contains(stdout.String(), "visible on stdout") {
 				t.Fatalf("stdout is missing: %q", stdout.String())
+			}
+		})
+	}
+}
+
+func TestNewExportErrorHandler(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		err    error
+		want   []string
+		secret string
+	}{
+		{
+			name: "unauthorized logs",
+			err: errors.Join(&signalExportError{signal: "logs", err: fmt.Errorf(
+				"failed to send logs to http://collector/api/default/v1/logs: 401 Unauthorized (body: token=secret)")}),
+			want: []string{"signal=logs", "reason=http_status", "http_status=401"}, secret: "secret",
+		},
+		{
+			name: "missing trace route",
+			err: &signalExportError{signal: "traces", err: fmt.Errorf(
+				"failed to send to http://collector/api/default/v1/traces: 404 Not Found (body: secret)")},
+			want: []string{"signal=traces", "reason=http_status", "http_status=404"}, secret: "secret",
+		},
+		{
+			name: "connection failure",
+			err: &signalExportError{signal: "logs", err: &url.Error{
+				Op: "Post", URL: "https://secret@collector/v1/logs", Err: errors.New("connection refused"),
+			}},
+			want: []string{"signal=logs", "reason=network"}, secret: "secret",
+		},
+		{
+			name: "timeout",
+			err:  &signalExportError{signal: "traces", err: context.DeadlineExceeded},
+			want: []string{"signal=traces", "reason=timeout"},
+		},
+		{
+			name: "unknown failure",
+			err:  errors.New("secret details"),
+			want: []string{"reason=other"}, secret: "secret details",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			newExportErrorHandler(&output).Handle(tc.err)
+			for _, want := range tc.want {
+				if !strings.Contains(output.String(), want) {
+					t.Errorf("missing %q in diagnostic: %s", want, output.String())
+				}
+			}
+			if tc.secret != "" && strings.Contains(output.String(), tc.secret) {
+				t.Errorf("diagnostic leaked secret: %s", output.String())
 			}
 		})
 	}
