@@ -11,6 +11,7 @@ func TestNewTelemetryResource(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct{ name, serviceName, environment, wantName string }{
 		{"configured service", "contratos_api", "production", "contratos_api"},
+		{"dotted service ID remains in resource", "com.sfperusac.tareoapp", "production", "com.sfperusac.tareoapp"},
 		{"missing service name", "", "", "unknown_service"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

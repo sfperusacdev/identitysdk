@@ -140,3 +140,37 @@ func TestNewTelemetryServiceMissingHeaderSecret(t *testing.T) {
 		t.Fatalf("expected missing header secret error, got %v", err)
 	}
 }
+
+func TestDefaultStreamName(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name       string
+		serviceID  string
+		headers    map[string]string
+		wantStream string
+	}{
+		{"dotted service ID", "com.sfperusac.tareoapp", map[string]string{"Authorization": "placeholder"}, "com_sfperusac_tareoapp"},
+		{"explicit stream", "com.sfperusac.tareoapp", map[string]string{"Authorization": "placeholder", "Stream-Name": "custom"}, "custom"},
+		{"missing service ID", "", map[string]string{"Authorization": "placeholder"}, "unknown_service"},
+		{"invalid service ID", "...", map[string]string{"Authorization": "placeholder"}, "unknown_service"},
+		{"environment fallback", "com.sfperusac.tareoapp", nil, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := DefaultConfig()
+			c.Enabled = true
+			c.OTLP.Headers = tc.headers
+			got := c.withDefaultStreamName(tc.serviceID)
+			streamName := got.OTLP.Headers["stream-name"]
+			if explicit := got.OTLP.Headers["Stream-Name"]; explicit != "" {
+				streamName = explicit
+			}
+			if streamName != tc.wantStream {
+				t.Fatalf("unexpected default stream name: got %q, want %q", streamName, tc.wantStream)
+			}
+			if tc.headers != nil && tc.headers["stream-name"] != "" {
+				t.Fatal("input headers were mutated")
+			}
+		})
+	}
+}

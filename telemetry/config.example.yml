@@ -6,7 +6,7 @@ telemetry:
     # protocol: http/protobuf
     # headers:
     #   Authorization: "${OPENOBSERVE_AUTH_HEADER}" # Exportación directa a OpenObserve.
-    #   stream-name: default
+    #   stream-name: custom_stream # Opcional: por defecto deriva de ServiceID.
   # traces:
   #   enabled: true
   #   sample_ratio: 0.1

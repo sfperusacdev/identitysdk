@@ -83,6 +83,45 @@ func (c Config) resolveHeaders() (Config, error) {
 	return c, nil
 }
 
+func (c Config) withDefaultStreamName(serviceID string) Config {
+	// Preserve the exporters' standard environment-based headers when no YAML
+	// headers are configured.
+	if !c.Enabled || (!c.Traces.Enabled && !c.Logs.ExportOTLP) || len(c.OTLP.Headers) == 0 {
+		return c
+	}
+	for name := range c.OTLP.Headers {
+		if strings.EqualFold(name, "stream-name") {
+			return c
+		}
+	}
+	if serviceID == "" {
+		serviceID = "unknown_service"
+	}
+	// OpenObserve formats stream names; keep service.name unchanged in the
+	// exported resource, but use a predictable stream-safe spelling here.
+	streamName := strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' {
+			return r
+		}
+		return '_'
+	}, serviceID)
+	if strings.Trim(streamName, "_") == "" {
+		streamName = "unknown_service"
+	}
+	// The resolved map belongs to this service; do not mutate the input map
+	// in case a caller reuses the Config.
+	headers := make(map[string]string, len(c.OTLP.Headers)+1)
+	for name, value := range c.OTLP.Headers {
+		headers[name] = value
+	}
+	headers["stream-name"] = streamName
+	c.OTLP.Headers = headers
+	return c
+}
+
 func (c Config) Validate() error {
 	if !c.Enabled {
 		return nil

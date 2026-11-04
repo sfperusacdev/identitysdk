@@ -56,6 +56,7 @@ func NewTelemetryService(ctx context.Context, c Config, serviceInfo ServiceInfo)
 	if err != nil {
 		return nil, err
 	}
+	c = c.withDefaultStreamName(serviceInfo.Name)
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}

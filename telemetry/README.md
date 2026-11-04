@@ -55,7 +55,7 @@ OpenTelemetry agrega un destino, nunca reemplaza la consola.
 | `environment` | vacío | Recomendado; no se supone `production`. |
 | `otlp.endpoint` | vacío | Obligatorio si se exporta alguna señal. URL HTTP(S) sin credenciales ni query. |
 | `otlp.protocol` | `http/protobuf` | También admite `grpc`. |
-| `otlp.headers` | ninguno | Headers comunes para logs y trazas; acepta valores literales o referencias `${VARIABLE}`. |
+| `otlp.headers` | ninguno | Headers comunes para logs y trazas; acepta valores literales o referencias `${VARIABLE}`. Si se configura, `stream-name` es opcional. |
 | `traces.enabled` | `true` | Aplicado cuando el interruptor general está activo. |
 | `traces.sample_ratio` | `0.1` | De 0 a 1; respeta el muestreo del padre. `0` explícito se conserva. |
 | `logs.level` | `info` | `debug`, `info`, `warn`, `error`. |
@@ -99,7 +99,6 @@ telemetry:
     protocol: http/protobuf
     headers:
       Authorization: "${OPENOBSERVE_AUTH_HEADER}"
-      stream-name: default
 ```
 
 Proporcionar `OPENOBSERVE_AUTH_HEADER` desde un secreto del despliegue con el valor
@@ -108,6 +107,12 @@ resuelve solo valores que sean exactamente `${VARIABLE}` al arrancar. Si falta l
 variable o está vacía, el servicio falla al arrancar sin registrar el secreto.
 No guardar credenciales literales en YAML versionado. Para gRPC, usar el endpoint
 gRPC sin ruta y agregar también el header `organization`.
+
+Si se configura `otlp.headers` y se omite `stream-name`, el SDK lo deriva del
+`ServiceID` existente: `com.sfperusac.tareoapp` produce el stream
+`com_sfperusac_tareoapp` tanto para logs como para trazas. Esto no modifica el
+atributo `service.name`, que mantiene `com.sfperusac.tareoapp`. Un `stream-name`
+explícito conserva su valor y tiene prioridad.
 
 Si `otlp.headers` no se configura, se conservan las variables estándar de los
 exportadores, como `OTEL_EXPORTER_OTLP_HEADERS` y sus variantes por señal. Si

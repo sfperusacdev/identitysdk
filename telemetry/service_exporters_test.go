@@ -25,7 +25,7 @@ type traceReceiver struct {
 
 func (s *traceReceiver) Export(ctx context.Context, _ *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
 	s.called.Store(true)
-	if md, ok := metadata.FromIncomingContext(ctx); ok && len(md.Get("authorization")) == 1 && md.Get("authorization")[0] == "Basic placeholder-grpc" && len(md.Get("organization")) == 1 && md.Get("organization")[0] == "default" {
+	if md, ok := metadata.FromIncomingContext(ctx); ok && len(md.Get("authorization")) == 1 && md.Get("authorization")[0] == "Basic placeholder-grpc" && len(md.Get("organization")) == 1 && md.Get("organization")[0] == "default" && len(md.Get("stream-name")) == 1 && md.Get("stream-name")[0] == "com_sfperusac_tareoapp" {
 		s.withAuth.Store(true)
 	}
 	return &collectortrace.ExportTraceServiceResponse{}, nil
@@ -49,7 +49,7 @@ type logReceiver struct {
 
 func (s *logReceiver) Export(ctx context.Context, _ *collectorlog.ExportLogsServiceRequest) (*collectorlog.ExportLogsServiceResponse, error) {
 	s.called.Store(true)
-	if md, ok := metadata.FromIncomingContext(ctx); ok && len(md.Get("authorization")) == 1 && md.Get("authorization")[0] == "Basic placeholder-grpc" && len(md.Get("organization")) == 1 && md.Get("organization")[0] == "default" {
+	if md, ok := metadata.FromIncomingContext(ctx); ok && len(md.Get("authorization")) == 1 && md.Get("authorization")[0] == "Basic placeholder-grpc" && len(md.Get("organization")) == 1 && md.Get("organization")[0] == "default" && len(md.Get("stream-name")) == 1 && md.Get("stream-name")[0] == "com_sfperusac_tareoapp" {
 		s.withAuth.Store(true)
 	}
 	return &collectorlog.ExportLogsServiceResponse{}, nil
@@ -71,7 +71,7 @@ func TestGRPCExporters(t *testing.T) {
 	c := telemetry.DefaultConfig()
 	c.Enabled, c.OTLP.Protocol, c.OTLP.Endpoint, c.Traces.SampleRatio = true, "grpc", "http://"+listener.Addr().String(), 1
 	c.OTLP.Headers = map[string]string{"authorization": "Basic placeholder-grpc", "organization": "default"}
-	r, err := telemetry.NewTelemetryService(t.Context(), c, telemetry.ServiceInfo{Name: "grpc-export-test"})
+	r, err := telemetry.NewTelemetryService(t.Context(), c, telemetry.ServiceInfo{Name: "com.sfperusac.tareoapp"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,6 +100,9 @@ func TestHTTPExporterHeaders(t *testing.T) {
 		wantAuth   string
 		wantStream string
 	}{
+		{"default stream from service ID", map[string]string{
+			"Authorization": "${OPENOBSERVE_AUTH_HEADER}",
+		}, "Basic placeholder-config", "com_sfperusac_tareoapp"},
 		{"configured headers override environment", map[string]string{
 			"Authorization": "${OPENOBSERVE_AUTH_HEADER}", "stream-name": "configured-stream",
 		}, "Basic placeholder-config", "configured-stream"},
@@ -125,7 +128,7 @@ func TestHTTPExporterHeaders(t *testing.T) {
 			c := telemetry.DefaultConfig()
 			c.Enabled, c.OTLP.Endpoint, c.Traces.SampleRatio = true, srv.URL+"/api/default", 1
 			c.OTLP.Headers = tc.headers
-			r, err := telemetry.NewTelemetryService(t.Context(), c, telemetry.ServiceInfo{Name: "header-test"})
+			r, err := telemetry.NewTelemetryService(t.Context(), c, telemetry.ServiceInfo{Name: "com.sfperusac.tareoapp"})
 			if err != nil {
 				t.Fatal(err)
 			}
