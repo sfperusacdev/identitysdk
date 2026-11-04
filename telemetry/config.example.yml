@@ -4,6 +4,9 @@ telemetry:
   otlp:
     endpoint: "http://localhost:4318"
     # protocol: http/protobuf
+    # headers:
+    #   Authorization: "${OPENOBSERVE_AUTH_HEADER}" # Exportación directa a OpenObserve.
+    #   stream-name: default
   # traces:
   #   enabled: true
   #   sample_ratio: 0.1

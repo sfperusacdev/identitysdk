@@ -1,6 +1,8 @@
 package telemetry
 
 import (
+	"context"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -23,6 +25,11 @@ func TestRead(t *testing.T) {
 		{name: "minimal enabled", yaml: "telemetry:\n  enabled: true\n  otlp:\n    endpoint: http://localhost:4318", check: func(t *testing.T, c Config) {
 			if !c.Enabled || !c.Traces.Enabled || !c.Logs.ExportOTLP {
 				t.Fatalf("missing enabled defaults: %+v", c)
+			}
+		}},
+		{name: "headers", yaml: "telemetry:\n  enabled: true\n  otlp:\n    endpoint: https://collector/api/default\n    headers:\n      Authorization: '${OPENOBSERVE_AUTH_HEADER}'\n      stream-name: default", check: func(t *testing.T, c Config) {
+			if c.OTLP.Headers["authorization"] != "${OPENOBSERVE_AUTH_HEADER}" || c.OTLP.Headers["stream-name"] != "default" {
+				t.Fatalf("headers were not decoded")
 			}
 		}},
 		{name: "explicit zero and false", yaml: "telemetry:\n  enabled: true\n  traces:\n    enabled: false\n    sample_ratio: 0\n  logs:\n    export_otlp: false", check: func(t *testing.T, c Config) {
@@ -78,7 +85,58 @@ func TestReadExampleConfig(t *testing.T) {
 	want := DefaultConfig()
 	want.Enabled = true
 	want.OTLP.Endpoint = "http://localhost:4318"
-	if c != want {
+	if !reflect.DeepEqual(c, want) {
 		t.Fatalf("unexpected example configuration: %+v", c)
+	}
+}
+
+func TestResolveOTLPHeaders(t *testing.T) {
+	t.Setenv("OPENOBSERVE_AUTH_HEADER", "Basic placeholder-test-token")
+	for _, tc := range []struct {
+		name    string
+		value   string
+		want    string
+		wantErr bool
+	}{
+		{"env reference", "${OPENOBSERVE_AUTH_HEADER}", "Basic placeholder-test-token", false},
+		{"literal", "default", "default", false},
+		{"missing variable", "${MISSING_AUTH_HEADER}", "", true},
+		{"invalid reference", "Basic ${OPENOBSERVE_AUTH_HEADER}", "", true},
+		{"empty value", "", "", true},
+		{"newline", "line\nvalue", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := DefaultConfig()
+			c.Enabled = true
+			c.OTLP.Headers = map[string]string{"Authorization": tc.value}
+			resolved, err := c.resolveHeaders()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("resolveHeaders error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if err != nil {
+				if strings.Contains(err.Error(), "placeholder-test-token") {
+					t.Fatal("error exposed header value")
+				}
+				return
+			}
+			if resolved.OTLP.Headers["Authorization"] != tc.want {
+				t.Fatal("unexpected resolved header")
+			}
+			if c.OTLP.Headers["Authorization"] != tc.value {
+				t.Fatal("configuration was mutated")
+			}
+		})
+	}
+}
+
+func TestNewTelemetryServiceMissingHeaderSecret(t *testing.T) {
+	c := DefaultConfig()
+	c.Enabled = true
+	c.OTLP.Endpoint = "https://collector.example.com/api/default"
+	c.OTLP.Headers = map[string]string{"Authorization": "${UNSET_TELEMETRY_HEADER_FOR_TEST}"}
+	t.Setenv("UNSET_TELEMETRY_HEADER_FOR_TEST", "")
+	_, err := NewTelemetryService(context.Background(), c, ServiceInfo{Name: "test"})
+	if err == nil || !strings.Contains(err.Error(), "UNSET_TELEMETRY_HEADER_FOR_TEST") {
+		t.Fatalf("expected missing header secret error, got %v", err)
 	}
 }

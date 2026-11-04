@@ -52,6 +52,10 @@ func (s *TelemetryService) TracerProvider() trace.TracerProvider { return s.trac
 func (s *TelemetryService) Propagator() propagation.TextMapPropagator { return s.propagator }
 
 func NewTelemetryService(ctx context.Context, c Config, serviceInfo ServiceInfo) (_ *TelemetryService, err error) {
+	c, err = c.resolveHeaders()
+	if err != nil {
+		return nil, err
+	}
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}

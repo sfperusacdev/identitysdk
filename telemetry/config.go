@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -13,8 +15,9 @@ type Config struct {
 	Enabled     bool   `mapstructure:"enabled"`
 	Environment string `mapstructure:"environment"`
 	OTLP        struct {
-		Endpoint string `mapstructure:"endpoint"`
-		Protocol string `mapstructure:"protocol"`
+		Endpoint string            `mapstructure:"endpoint"`
+		Protocol string            `mapstructure:"protocol"`
+		Headers  map[string]string `mapstructure:"headers"`
 	} `mapstructure:"otlp"`
 	Traces struct {
 		Enabled     bool    `mapstructure:"enabled"`
@@ -49,6 +52,35 @@ func Read(v *viper.Viper) (Config, error) {
 	c.Environment = strings.TrimSpace(c.Environment)
 	c.OTLP.Endpoint = strings.TrimSpace(c.OTLP.Endpoint)
 	return c, c.Validate()
+}
+
+var headerEnvReference = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$`)
+
+func (c Config) resolveHeaders() (Config, error) {
+	if !c.Enabled || (!c.Traces.Enabled && !c.Logs.ExportOTLP) || len(c.OTLP.Headers) == 0 {
+		return c, nil
+	}
+	resolved := make(map[string]string, len(c.OTLP.Headers))
+	for name, value := range c.OTLP.Headers {
+		if strings.TrimSpace(name) == "" || strings.ContainsAny(name, "\r\n") {
+			return c, fmt.Errorf("telemetry.otlp.headers contains an invalid header name")
+		}
+		if match := headerEnvReference.FindStringSubmatch(value); match != nil {
+			var present bool
+			value, present = os.LookupEnv(match[1])
+			if !present || value == "" {
+				return c, fmt.Errorf("telemetry.otlp.headers.%s requires environment variable %s", name, match[1])
+			}
+		} else if strings.Contains(value, "${") {
+			return c, fmt.Errorf("telemetry.otlp.headers.%s must use a complete ${VARIABLE} reference", name)
+		}
+		if value == "" || strings.ContainsAny(value, "\r\n") {
+			return c, fmt.Errorf("telemetry.otlp.headers.%s has an invalid value", name)
+		}
+		resolved[name] = value
+	}
+	c.OTLP.Headers = resolved
+	return c, nil
 }
 
 func (c Config) Validate() error {

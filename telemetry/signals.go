@@ -67,22 +67,42 @@ func newLoggerProvider(ctx context.Context, c Config, res *resource.Resource) (*
 
 func newOTLPTraceExporter(ctx context.Context, c Config) (sdktrace.SpanExporter, error) {
 	if c.OTLP.Protocol == "grpc" {
-		return otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpointURL(c.OTLP.Endpoint), otlptracegrpc.WithTimeout(5*time.Second))
+		opts := []otlptracegrpc.Option{
+			otlptracegrpc.WithEndpointURL(c.OTLP.Endpoint), otlptracegrpc.WithTimeout(5 * time.Second),
+		}
+		if len(c.OTLP.Headers) > 0 {
+			opts = append(opts, otlptracegrpc.WithHeaders(c.OTLP.Headers))
+		}
+		return otlptracegrpc.New(ctx, opts...)
 	}
-	return otlptracehttp.New(ctx,
-		otlptracehttp.WithEndpointURL(strings.TrimRight(c.OTLP.Endpoint, "/")+"/v1/traces"),
-		otlptracehttp.WithTimeout(5*time.Second))
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithEndpointURL(strings.TrimRight(c.OTLP.Endpoint, "/") + "/v1/traces"),
+		otlptracehttp.WithTimeout(5 * time.Second),
+	}
+	if len(c.OTLP.Headers) > 0 {
+		opts = append(opts, otlptracehttp.WithHeaders(c.OTLP.Headers))
+	}
+	return otlptracehttp.New(ctx, opts...)
 }
 
 func newOTLPLogExporter(ctx context.Context, c Config) (sdklog.Exporter, error) {
 	if c.OTLP.Protocol == "grpc" {
-		return otlploggrpc.New(ctx,
-			otlploggrpc.WithEndpointURL(c.OTLP.Endpoint), otlploggrpc.WithTimeout(5*time.Second))
+		opts := []otlploggrpc.Option{
+			otlploggrpc.WithEndpointURL(c.OTLP.Endpoint), otlploggrpc.WithTimeout(5 * time.Second),
+		}
+		if len(c.OTLP.Headers) > 0 {
+			opts = append(opts, otlploggrpc.WithHeaders(c.OTLP.Headers))
+		}
+		return otlploggrpc.New(ctx, opts...)
 	}
-	return otlploghttp.New(ctx,
-		otlploghttp.WithEndpointURL(strings.TrimRight(c.OTLP.Endpoint, "/")+"/v1/logs"),
-		otlploghttp.WithTimeout(5*time.Second))
+	opts := []otlploghttp.Option{
+		otlploghttp.WithEndpointURL(strings.TrimRight(c.OTLP.Endpoint, "/") + "/v1/logs"),
+		otlploghttp.WithTimeout(5 * time.Second),
+	}
+	if len(c.OTLP.Headers) > 0 {
+		opts = append(opts, otlploghttp.WithHeaders(c.OTLP.Headers))
+	}
+	return otlploghttp.New(ctx, opts...)
 }
 
 // SQL, errors and URLs can contain credentials; sanitize them before export.

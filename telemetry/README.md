@@ -55,6 +55,7 @@ OpenTelemetry agrega un destino, nunca reemplaza la consola.
 | `environment` | vacío | Recomendado; no se supone `production`. |
 | `otlp.endpoint` | vacío | Obligatorio si se exporta alguna señal. URL HTTP(S) sin credenciales ni query. |
 | `otlp.protocol` | `http/protobuf` | También admite `grpc`. |
+| `otlp.headers` | ninguno | Headers comunes para logs y trazas; acepta valores literales o referencias `${VARIABLE}`. |
 | `traces.enabled` | `true` | Aplicado cuando el interruptor general está activo. |
 | `traces.sample_ratio` | `0.1` | De 0 a 1; respeta el muestreo del padre. `0` explícito se conserva. |
 | `logs.level` | `info` | `debug`, `info`, `warn`, `error`. |
@@ -86,12 +87,36 @@ Para OTLP/gRPC usar `protocol: grpc` y, habitualmente,
 certificados del Collector. El endpoint HTTP es base: se agregan `/v1/traces`
 y `/v1/logs`, admitiendo un prefijo de proxy.
 
-El archivo gobierna endpoint, protocolo y switches. Los exportadores oficiales
-permiten configurar autenticación y certificados mediante sus variables estándar,
-por ejemplo `OTEL_EXPORTER_OTLP_HEADERS` y `OTEL_EXPORTER_OTLP_CERTIFICATE` (también
-sus variantes por señal). Guardar esos valores en secretos de despliegue, no en
-el YAML. `OTEL_RESOURCE_ATTRIBUTES` permite atributos adicionales; nombre y versión
-del servicio se obtienen del setup, y cada arranque genera un `service.instance.id`.
+Para exportar directamente a OpenObserve (sin Collector), configurar el endpoint
+base con la organización y los headers de autenticación:
+
+```yaml
+telemetry:
+  enabled: true
+  environment: production
+  otlp:
+    endpoint: "https://openobserve.example.com/api/default"
+    protocol: http/protobuf
+    headers:
+      Authorization: "${OPENOBSERVE_AUTH_HEADER}"
+      stream-name: default
+```
+
+Proporcionar `OPENOBSERVE_AUTH_HEADER` desde un secreto del despliegue con el valor
+`Basic <base64(usuario:contraseña)>` (espacio literal, **no** `%20`). El SDK
+resuelve solo valores que sean exactamente `${VARIABLE}` al arrancar. Si falta la
+variable o está vacía, el servicio falla al arrancar sin registrar el secreto.
+No guardar credenciales literales en YAML versionado. Para gRPC, usar el endpoint
+gRPC sin ruta y agregar también el header `organization`.
+
+Si `otlp.headers` no se configura, se conservan las variables estándar de los
+exportadores, como `OTEL_EXPORTER_OTLP_HEADERS` y sus variantes por señal. Si
+`otlp.headers` contiene valores, estos **sustituyen** los headers configurados
+mediante esas variables para ambos exportadores; incluir todos los headers
+necesarios en el mapa. Los certificados siguen configurándose mediante las
+variables estándar (por ejemplo `OTEL_EXPORTER_OTLP_CERTIFICATE`).
+`OTEL_RESOURCE_ATTRIBUTES` permite atributos adicionales; nombre y versión del
+servicio se obtienen del setup, y cada arranque genera un `service.instance.id`.
 
 ## Logs existentes
 
