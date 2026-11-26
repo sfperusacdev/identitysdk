@@ -4,6 +4,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
 	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 	"github.com/sfperusacdev/identitysdk/sark_services/global"
+	"github.com/sfperusacdev/identitysdk/sark_services/global/templates"
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 	"github.com/sfperusacdev/identitysdk/sark_services/storage"
 	"github.com/sfperusacdev/identitysdk/sark_services/variables"
@@ -19,7 +20,8 @@ var Module = fx.Module("identitysdk/sark_services",
 		variables.NewVariablesService,
 		storage.NewStorageService,
 		asistencia.NewAsistenciaService,
-		global.NewGlobalService,
+		templates.NewTemplatesService,
+		global.NewGlobalServiceWithTemplates,
 		contratos.NewContratosService,
 		NewSarkBridgeService,
 	),
