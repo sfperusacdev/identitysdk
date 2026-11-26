@@ -55,6 +55,7 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 		grupo TEXT,
 		description TEXT,
 		value TEXT NOT NULL,
+		hidden BOOLEAN NOT NULL DEFAULT FALSE,
 		priority SMALLINT DEFAULT 0 CHECK (priority >= 0),
 		data_type TEXT NOT NULL CHECK (data_type IN ('string', 'number', 'boolean', 'array', 'object'))
 	)`
@@ -63,6 +64,11 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 		return nil // skip
 	}
 	rs := tx.Session(&gorm.Session{Logger: logger.Discard}).Exec(script)
+	if rs.Error != nil {
+		return errs.Pgf(rs.Error)
+	}
+	rs = tx.Session(&gorm.Session{Logger: logger.Discard}).
+		Exec("ALTER TABLE _system_properties ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE")
 	if rs.Error != nil {
 		return errs.Pgf(rs.Error)
 	}
@@ -76,6 +82,7 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 				"grupo":       entry.Group,
 				"description": entry.Description,
 				"value":       entry.Value,
+				"hidden":      entry.Hidden,
 				"priority":    i + 1,
 				"data_type":   entry.Type,
 			},
@@ -86,7 +93,7 @@ func (r *SystemPropsPgProvider) ensureTable(ctx context.Context, empresa string)
 			Clauses(
 				clause.OnConflict{
 					Columns:   []clause.Column{{Name: "key"}},
-					DoUpdates: clause.AssignmentColumns([]string{"title", "grupo", "description", "priority", "data_type"}),
+					DoUpdates: clause.AssignmentColumns([]string{"title", "grupo", "description", "hidden", "priority", "data_type"}),
 				},
 			).Table("_system_properties").Create(&records)
 
@@ -175,6 +182,7 @@ func (r *SystemPropsPgProvider) RetriveAll(ctx context.Context) ([]models.Detail
 		grupo, 
 		description, 
 		data_type AS type, 
+		hidden,
 		value
 	FROM 
 		_system_properties

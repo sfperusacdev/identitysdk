@@ -11,5 +11,6 @@ type DetailedSystemProperty struct {
 	Group       string `xml:"group,omitempty" json:"group,omitempty"`
 	Description string `xml:"description,omitempty" json:"description,omitempty"`
 	Type        string `xml:"type,omitempty" json:"type,omitempty"`
+	Hidden      bool   `xml:"hidden" json:"hidden"`
 	Value       string `xml:"value,omitempty" json:"value,omitempty"`
 }
