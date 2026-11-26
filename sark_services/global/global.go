@@ -10,16 +10,12 @@ type GlobalService struct {
 	Templates *templates.TemplatesService
 }
 
-func NewGlobalService(env bridgeidentity.IdentityProvider) *GlobalService {
-	return &GlobalService{env: env}
-}
-
-// NewGlobalServiceWithTemplates wires the templates client into the global bridge.
-func NewGlobalServiceWithTemplates(
+func NewGlobalService(
 	env bridgeidentity.IdentityProvider,
 	templatesService *templates.TemplatesService,
 ) *GlobalService {
-	service := NewGlobalService(env)
-	service.Templates = templatesService
-	return service
+	return &GlobalService{
+		env:       env,
+		Templates: templatesService,
+	}
 }

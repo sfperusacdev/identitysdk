@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sfperusacdev/identitysdk"
+	"github.com/sfperusacdev/identitysdk/sark_services/global/templates"
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 )
 
@@ -90,7 +91,8 @@ func TestGlobalService_GetWorkflow(t *testing.T) {
 
 			ctx := identitysdk.CtxWithDomain(t.Context(), "empresa-test")
 			ctx = identitysdk.CtxWithToken(ctx, "Bearer test-token")
-			service := NewGlobalService(bridgeidentity.NewIdentityProvider())
+			env := bridgeidentity.NewIdentityProvider()
+			service := NewGlobalService(env, templates.NewTemplatesService(env))
 			workflow, err := service.GetWorkflow(ctx, "factura")
 			if (err != nil) != tt.wantError {
 				t.Fatalf("GetWorkflow() error = %v, wantError %v", err, tt.wantError)

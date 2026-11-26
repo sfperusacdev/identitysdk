@@ -15,6 +15,7 @@ import (
 	"github.com/sfperusacdev/identitysdk/sark_services/asistencia"
 	"github.com/sfperusacdev/identitysdk/sark_services/contratos"
 	"github.com/sfperusacdev/identitysdk/sark_services/global"
+	"github.com/sfperusacdev/identitysdk/sark_services/global/templates"
 	bridgeidentity "github.com/sfperusacdev/identitysdk/sark_services/identity"
 )
 
@@ -92,7 +93,7 @@ func checkMigration[T any](t *testing.T, request migrationRequest, legacy, migra
 			ctx := identitysdk.CtxWithToken(identitysdk.CtxWithDomain(t.Context(), "empresa-test"), "Bearer session-token")
 			fixture := migrationFixture{
 				ctx: ctx, legacy: NewExternalBridgeService(conf),
-				contratos: contratos.NewContratosService(env), global: global.NewGlobalService(env),
+				contratos: contratos.NewContratosService(env), global: global.NewGlobalService(env, templates.NewTemplatesService(env)),
 				identity: bridgeidentity.NewIdentityService(conf, env), asistencia: asistencia.NewAsistenciaService(nil),
 			}
 			for _, implementation := range []struct {
